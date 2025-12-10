@@ -26,12 +26,15 @@ const Accounts = () => {
                 <AccountList />
             </Box>
 
-            <Divider />
-
-            <Box>
-                <Heading size="md" mb={4}>Recent Transactions</Heading>
-                <ExpenseList />
-            </Box>
+            {isTrader && (
+                <>
+                    <Divider />
+                    <Box>
+                        <Heading size="md" mb={4}>Recent Transactions</Heading>
+                        <ExpenseList />
+                    </Box>
+                </>
+            )}
         </VStack>
     );
 };

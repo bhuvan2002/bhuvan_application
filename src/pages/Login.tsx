@@ -83,9 +83,6 @@ const Login = () => {
                         <Button colorScheme="blue" width="full" onClick={handleLogin}>
                             Sign In
                         </Button>
-                        <Text fontSize="sm" color="gray.500">
-                            Default credentials: admin / admin
-                        </Text>
                     </VStack>
                 </CardBody>
             </Card>
