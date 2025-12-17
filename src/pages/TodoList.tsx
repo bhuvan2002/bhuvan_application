@@ -44,7 +44,7 @@ const TodoList = () => {
             title: task,
             isComplete: false,
             priority,
-            dueDate: dueDate || new Date().toISOString(),
+            dueDate: dueDate ? new Date(dueDate).toISOString() : new Date().toISOString(),
         };
         addTodo(newTodo);
         setTask('');

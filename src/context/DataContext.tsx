@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
 import type { Trade, Account, Expense, Todo } from '../types';
+import { useAuth } from './AuthContext';
 
 interface DataContextType {
     trades: Trade[];
@@ -19,6 +20,7 @@ interface DataContextType {
 const DataContext = createContext<DataContextType | undefined>(undefined);
 
 export const DataProvider = ({ children }: { children: ReactNode }) => {
+    const { token } = useAuth();
     const [trades, setTrades] = useState<Trade[]>([]);
     const [accounts, setAccounts] = useState<Account[]>([]);
     const [expenses, setExpenses] = useState<Expense[]>([]);
@@ -26,13 +28,30 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
 
     const API_URL = 'http://localhost:3000/api';
 
-    const fetchData = async () => {
+    const getHeaders = (authToken: string | null = token) => ({
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${authToken}`
+    });
+
+    const logout = () => {
+        // Clear data on logout keying off dependency
+        setTrades([]);
+        setAccounts([]);
+        setExpenses([]);
+        setTodos([]);
+    };
+
+    const fetchData = async (authToken: string | null = token) => {
+        if (!authToken) {
+            logout(); // Clear data if no token
+            return;
+        }
         try {
             const [tradesRes, accountsRes, expensesRes, todosRes] = await Promise.all([
-                fetch(`${API_URL}/trades`),
-                fetch(`${API_URL}/accounts`),
-                fetch(`${API_URL}/expenses`),
-                fetch(`${API_URL}/todos`)
+                fetch(`${API_URL}/trades`, { headers: getHeaders(authToken) }),
+                fetch(`${API_URL}/accounts`, { headers: getHeaders(authToken) }),
+                fetch(`${API_URL}/expenses`, { headers: getHeaders(authToken) }),
+                fetch(`${API_URL}/todos`, { headers: getHeaders(authToken) })
             ]);
 
             if (tradesRes.ok) setTrades(await tradesRes.json());
@@ -41,18 +60,27 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
             if (todosRes.ok) setTodos(await todosRes.json());
         } catch (error) {
             console.error('Failed to fetch data:', error);
+            if (String(error).includes('403') || String(error).includes('401')) {
+                // authLogout(); // Let AuthContext handle logout state, we just react to token change? 
+                // Currently AuthContext doesn't expose a way to force logout from here unless we use useAuth().logout
+                // But if token is invalid, we will eventually get a 401.
+            }
         }
     };
 
     useEffect(() => {
-        fetchData();
-    }, []);
+        if (token) {
+            fetchData(token);
+        } else {
+            logout();
+        }
+    }, [token]);
 
     const addTrade = async (trade: Trade) => {
         try {
             const res = await fetch(`${API_URL}/trades`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: getHeaders(),
                 body: JSON.stringify(trade)
             });
             if (res.ok) {
@@ -66,7 +94,10 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
 
     const deleteTrade = async (id: string) => {
         try {
-            const res = await fetch(`${API_URL}/trades/${id}`, { method: 'DELETE' });
+            const res = await fetch(`${API_URL}/trades/${id}`, {
+                method: 'DELETE',
+                headers: getHeaders()
+            });
             if (res.ok) {
                 setTrades(prev => prev.filter(t => t.id !== id));
             }
@@ -79,7 +110,7 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
         try {
             const res = await fetch(`${API_URL}/accounts`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: getHeaders(),
                 body: JSON.stringify(account)
             });
             if (res.ok) {
@@ -95,14 +126,15 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
         try {
             const res = await fetch(`${API_URL}/expenses`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: getHeaders(),
                 body: JSON.stringify(expense)
             });
             if (res.ok) {
                 const newExpense = await res.json();
                 setExpenses(prev => [newExpense, ...prev]);
+
                 // Refresh accounts to get updated balance
-                const accountsRes = await fetch(`${API_URL}/accounts`);
+                const accountsRes = await fetch(`${API_URL}/accounts`, { headers: getHeaders() });
                 if (accountsRes.ok) setAccounts(await accountsRes.json());
             }
         } catch (error) {
@@ -114,7 +146,7 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
         try {
             const res = await fetch(`${API_URL}/todos`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: getHeaders(),
                 body: JSON.stringify(todo)
             });
             if (res.ok) {
@@ -132,7 +164,7 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
         try {
             const res = await fetch(`${API_URL}/todos/${id}`, {
                 method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
+                headers: getHeaders(),
                 body: JSON.stringify({ isComplete: !todo.isComplete })
             });
             if (res.ok) {
@@ -146,7 +178,10 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
 
     const deleteTodo = async (id: string) => {
         try {
-            const res = await fetch(`${API_URL}/todos/${id}`, { method: 'DELETE' });
+            const res = await fetch(`${API_URL}/todos/${id}`, {
+                method: 'DELETE',
+                headers: getHeaders()
+            });
             if (res.ok) {
                 setTodos(prev => prev.filter(t => t.id !== id));
             }
@@ -159,7 +194,7 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
         try {
             const res = await fetch(`${API_URL}/todos/${updated.id}`, {
                 method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
+                headers: getHeaders(),
                 body: JSON.stringify(updated)
             });
             if (res.ok) {

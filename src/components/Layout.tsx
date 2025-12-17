@@ -24,6 +24,7 @@ const Links = [
     { name: 'Journal', path: '/journal', roles: ['TRADER'] },
     { name: 'Accounts', path: '/accounts', roles: ['TRADER', 'PARENT'] },
     { name: 'To-Do', path: '/todo', roles: ['TRADER'] },
+    { name: 'Planner', path: '/planner', roles: ['TRADER'] },
 ];
 
 const NavLink = ({ children, to, isActive }: { children: React.ReactNode; to: string; isActive: boolean }) => (
@@ -43,6 +44,25 @@ const NavLink = ({ children, to, isActive }: { children: React.ReactNode; to: st
         {children}
     </Link>
 );
+
+import { useState, useEffect } from 'react';
+
+const LiveClock = () => {
+    const [time, setTime] = useState(new Date());
+
+    useEffect(() => {
+        const timer = setInterval(() => {
+            setTime(new Date());
+        }, 1000);
+        return () => clearInterval(timer);
+    }, []);
+
+    return (
+        <Text fontSize="sm" fontWeight="bold" minW="100px" textAlign="center">
+            {time.toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour12: false })} IST
+        </Text>
+    );
+};
 
 export default function Layout() {
     const { isOpen, onOpen, onClose } = useDisclosure();
@@ -74,7 +94,8 @@ export default function Layout() {
                         </HStack>
                     </HStack>
                     <Flex alignItems={'center'}>
-                        <Stack direction={'row'} spacing={7}>
+                        <Stack direction={'row'} spacing={7} alignItems="center">
+                            <LiveClock />
                             <Button onClick={toggleColorMode}>
                                 {colorMode === 'light' ? <MoonIcon /> : <SunIcon />}
                             </Button>

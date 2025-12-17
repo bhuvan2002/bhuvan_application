@@ -4,7 +4,6 @@ import {
     FormControl,
     FormLabel,
     Input,
-    Select,
     VStack,
     Heading,
     Text,
@@ -13,37 +12,59 @@ import {
     Card,
     CardBody,
     CardHeader,
+    Tabs,
+    TabList,
+    TabPanels,
+    Tab,
+    TabPanel,
+    Select
 } from '@chakra-ui/react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import type { Role } from '../types';
 
 const Login = () => {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
-    const [role, setRole] = useState<Role>('TRADER');
-    const { login } = useAuth();
+    const [role, setRole] = useState('TRADER');
+    const [isLoading, setIsLoading] = useState(false);
+
+    const { login, register } = useAuth();
     const navigate = useNavigate();
     const toast = useToast();
 
-    const handleLogin = () => {
-        if (username === 'admin' && password === 'admin') {
-            login(role);
-            toast({
-                title: 'Login Successful',
-                status: 'success',
-                duration: 3000,
-                isClosable: true,
-            });
+    const handleLogin = async () => {
+        setIsLoading(true);
+        try {
+            await login({ username, password });
+            toast({ title: 'Login Successful', status: 'success', duration: 2000 });
             navigate('/');
-        } else {
+        } catch (error: any) {
             toast({
-                title: 'Invalid Credentials',
-                description: 'Please use admin/admin',
+                title: 'Login Failed',
+                description: error.response?.data?.error || 'Invalid credentials',
                 status: 'error',
-                duration: 3000,
-                isClosable: true,
+                duration: 3000
             });
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleRegister = async () => {
+        setIsLoading(true);
+        try {
+            await register({ username, password, role });
+            toast({ title: 'Registration Successful', description: 'Please login now', status: 'success', duration: 3000 });
+            // Switch to login tab - logic to prevent auto switch but notify user
+        } catch (error: any) {
+            toast({
+                title: 'Registration Failed',
+                description: error.response?.data?.error || 'Registration failed',
+                status: 'error',
+                duration: 3000
+            });
+        } finally {
+            setIsLoading(false);
         }
     };
 
@@ -55,35 +76,54 @@ const Login = () => {
                     <Text color="gray.500">Sign in to manage your trading and finances</Text>
                 </CardHeader>
                 <CardBody>
-                    <VStack spacing={4}>
-                        <FormControl>
-                            <FormLabel>Username</FormLabel>
-                            <Input
-                                value={username}
-                                onChange={(e) => setUsername(e.target.value)}
-                                placeholder="Enter username"
-                            />
-                        </FormControl>
-                        <FormControl>
-                            <FormLabel>Password</FormLabel>
-                            <Input
-                                type="password"
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                                placeholder="Enter password"
-                            />
-                        </FormControl>
-                        <FormControl>
-                            <FormLabel>Role</FormLabel>
-                            <Select value={role} onChange={(e) => setRole(e.target.value as Role)}>
-                                <option value="TRADER">Trader (Full Access)</option>
-                                <option value="PARENT">Parent (Monitor)</option>
-                            </Select>
-                        </FormControl>
-                        <Button colorScheme="blue" width="full" onClick={handleLogin}>
-                            Sign In
-                        </Button>
-                    </VStack>
+                    <Tabs isFitted variant="enclosed">
+                        <TabList mb="1em">
+                            <Tab>Login</Tab>
+                            <Tab>Register</Tab>
+                        </TabList>
+                        <TabPanels>
+                            <TabPanel>
+                                <VStack spacing={4}>
+                                    <FormControl>
+                                        <FormLabel>Username</FormLabel>
+                                        <Input value={username} onChange={(e) => setUsername(e.target.value)} />
+                                    </FormControl>
+                                    <FormControl>
+                                        <FormLabel>Password</FormLabel>
+                                        <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
+                                    </FormControl>
+                                    <Button colorScheme="blue" width="full" onClick={handleLogin} isLoading={isLoading}>
+                                        Sign In
+                                    </Button>
+                                </VStack>
+                            </TabPanel>
+                            <TabPanel>
+                                <VStack spacing={4}>
+                                    <FormControl>
+                                        <FormLabel>Username</FormLabel>
+                                        <Input value={username} onChange={(e) => setUsername(e.target.value)} />
+                                    </FormControl>
+                                    <FormControl>
+                                        <FormLabel>Password</FormLabel>
+                                        <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
+                                    </FormControl>
+                                    <FormControl>
+                                        <FormLabel>Role (for new user)</FormLabel>
+                                        <Select
+                                            value={role}
+                                            onChange={(e) => setRole(e.target.value)}
+                                        >
+                                            <option value="TRADER">Trader</option>
+                                            <option value="PARENT">Parent</option>
+                                        </Select>
+                                    </FormControl>
+                                    <Button colorScheme="green" width="full" onClick={handleRegister} isLoading={isLoading}>
+                                        Register
+                                    </Button>
+                                </VStack>
+                            </TabPanel>
+                        </TabPanels>
+                    </Tabs>
                 </CardBody>
             </Card>
         </Container>
