@@ -9,7 +9,10 @@ export interface Account {
     id: string;
     name: string;
     bankName: string;
-    accountNumber: string; // Masked in UI
+    accountNumber: string;
+    ifsc?: string;
+    mobileAppKey?: string;
+    atmKey?: string;
     balance: number;
 }
 

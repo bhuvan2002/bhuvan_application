@@ -83,7 +83,7 @@ const TradeAnalytics = () => {
                     <CardBody textAlign="center">
                         <Text color="gray.500">Net P&L</Text>
                         <Heading size="xl" color={cumulative >= 0 ? 'green.500' : 'red.500'}>
-                            ${cumulative.toFixed(2)}
+                            ₹{cumulative.toFixed(2)}
                         </Heading>
                     </CardBody>
                 </Card>

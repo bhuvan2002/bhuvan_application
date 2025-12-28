@@ -1,4 +1,0 @@
-owner: USER_GITHUB_USERNAME
-repo: USER_REPO_NAME
-provider: github
-updaterCacheDirName: bhuvan-app-updater

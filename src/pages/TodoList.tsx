@@ -24,14 +24,19 @@ import {
     Button
 } from '@chakra-ui/react';
 import { DeleteIcon, AddIcon, CalendarIcon, CheckCircleIcon } from '@chakra-ui/icons';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useData } from '../context/DataContext';
 import { v4 as uuidv4 } from 'uuid';
 import type { Todo } from '../types';
 import { format, isToday, isTomorrow, isPast, parseISO } from 'date-fns';
 
 const TodoList = () => {
-    const { todos, addTodo, toggleTodo, deleteTodo } = useData();
+    const { todos, addTodo, toggleTodo, deleteTodo, fetchTodos } = useData();
+
+    useEffect(() => {
+        fetchTodos();
+    }, []);
+
     const [task, setTask] = useState('');
     const [priority, setPriority] = useState<'HIGH' | 'MEDIUM' | 'LOW'>('MEDIUM');
     const [dueDate, setDueDate] = useState('');

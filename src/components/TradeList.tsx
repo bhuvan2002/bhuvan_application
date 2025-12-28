@@ -86,7 +86,7 @@ const TradeList = () => {
                                 <Td isNumeric>{trade.entryPrice}</Td>
                                 <Td isNumeric>{trade.exitPrice}</Td>
                                 <Td isNumeric color={trade.pnl >= 0 ? 'green.500' : 'red.500'} fontWeight="bold">
-                                    {trade.pnl >= 0 ? '+' : ''}{trade.pnl}
+                                    {trade.pnl >= 0 ? '+₹' : '-₹'}{Math.abs(trade.pnl)}
                                 </Td>
                                 <Td>
                                     <IconButton

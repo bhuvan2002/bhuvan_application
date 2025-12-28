@@ -27,6 +27,8 @@ import { useState, useEffect, useRef } from 'react';
 import { AddIcon, DeleteIcon, ChevronLeftIcon, ChevronRightIcon } from '@chakra-ui/icons';
 import { v4 as uuidv4 } from 'uuid';
 import { format, addDays, isSameDay, parseISO } from 'date-fns';
+import apiService from '../services/apiService';
+
 
 interface PlanItem {
     id: string;
@@ -57,10 +59,9 @@ export default function Planner() {
 
     const fetchPlans = async () => {
         try {
-            const res = await fetch(`http://localhost:3000/api/plans?date=${dateKey}`);
-            if (res.ok) {
-                const data = await res.json();
-                setCurrentDayPlans(data);
+            const res = await apiService.get('/plans', { date: dateKey });
+            if (res.status === 200) {
+                setCurrentDayPlans(res.data);
             }
         } catch (error) {
             console.error('Failed to fetch plans', error);
@@ -117,11 +118,7 @@ export default function Planner() {
 
         if (currentPlan.id) {
             // Update
-            fetch(`http://localhost:3000/api/plans/${currentPlan.id}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(newPlan)
-            }).then(() => {
+            apiService.put(`/plans/${currentPlan.id}`, newPlan).then(() => {
                 fetchPlans();
                 onClose();
                 setCurrentPlan({});
@@ -136,11 +133,7 @@ export default function Planner() {
             });
         } else {
             // Create
-            fetch('http://localhost:3000/api/plans', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(newPlan)
-            }).then(() => {
+            apiService.post('/plans', newPlan).then(() => {
                 fetchPlans();
                 onClose();
                 setCurrentPlan({});
@@ -166,9 +159,7 @@ export default function Planner() {
     };
 
     const handleDelete = (id: string) => {
-        fetch(`http://localhost:3000/api/plans/${id}`, {
-            method: 'DELETE',
-        }).then(() => {
+        apiService.delete(`/plans/${id}`).then(() => {
             fetchPlans();
             toast({ title: 'Plan deleted', status: 'info', duration: 2000 });
         }).catch(() => {

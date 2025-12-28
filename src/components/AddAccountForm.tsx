@@ -61,8 +61,20 @@ const AddAccountForm = () => {
                                 <Input placeholder="e.g. Chase" {...register('bankName', { required: true })} />
                             </FormControl>
                             <FormControl isRequired>
-                                <FormLabel>Account Number (Last 4)</FormLabel>
-                                <Input placeholder="1234" {...register('accountNumber', { required: true })} />
+                                <FormLabel>Account Number</FormLabel>
+                                <Input placeholder="Full account number" {...register('accountNumber', { required: true })} />
+                            </FormControl>
+                            <FormControl>
+                                <FormLabel>IFSC Code</FormLabel>
+                                <Input placeholder="e.g. SBIN0001234" {...register('ifsc')} />
+                            </FormControl>
+                            <FormControl>
+                                <FormLabel>Mobile App Key (Optional)</FormLabel>
+                                <Input placeholder="App login key" {...register('mobileAppKey')} />
+                            </FormControl>
+                            <FormControl>
+                                <FormLabel>ATM Pin / Key (Optional)</FormLabel>
+                                <Input placeholder="ATM secret" {...register('atmKey')} />
                             </FormControl>
                             <FormControl isRequired>
                                 <FormLabel>Current Balance</FormLabel>

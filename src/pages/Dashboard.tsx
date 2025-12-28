@@ -26,6 +26,8 @@ import {
     GridItem
 } from '@chakra-ui/react';
 import { useData } from '../context/DataContext';
+import { useEffect } from 'react';
+
 import { format, isToday, isTomorrow, parseISO } from 'date-fns';
 import {
     LineChart,
@@ -44,7 +46,18 @@ import {
 } from 'recharts';
 
 const Dashboard = () => {
-    const { trades, accounts, expenses, todos } = useData();
+    const {
+        trades, accounts, expenses, todos,
+        fetchTrades, fetchAccounts, fetchExpenses, fetchTodos
+    } = useData();
+
+    useEffect(() => {
+        fetchTrades();
+        fetchAccounts();
+        fetchExpenses();
+        fetchTodos();
+    }, []);
+
 
     // --- Trading Metrics ---
     const totalPnL = trades.reduce((acc, t) => acc + t.pnl, 0);
@@ -106,7 +119,7 @@ const Dashboard = () => {
                                     <Stat>
                                         <StatLabel>Total Net P&L</StatLabel>
                                         <StatNumber color={totalPnL >= 0 ? 'green.500' : 'red.500'}>
-                                            ${totalPnL.toFixed(2)}
+                                            ₹{totalPnL.toFixed(2)}
                                         </StatNumber>
                                         <StatHelpText>
                                             <StatArrow type={totalPnL >= 0 ? 'increase' : 'decrease'} />
@@ -119,7 +132,7 @@ const Dashboard = () => {
                                 <CardBody>
                                     <Stat>
                                         <StatLabel>Total Balance</StatLabel>
-                                        <StatNumber>${totalBalance.toLocaleString()}</StatNumber>
+                                        <StatNumber>₹{totalBalance.toLocaleString()}</StatNumber>
                                         <StatHelpText>{accounts.length} Accounts</StatHelpText>
                                     </Stat>
                                 </CardBody>
@@ -180,7 +193,7 @@ const Dashboard = () => {
                                 <CardBody>
                                     <Stat>
                                         <StatLabel>Net P&L</StatLabel>
-                                        <StatNumber color={totalPnL >= 0 ? 'green.500' : 'red.500'}>${totalPnL.toFixed(2)}</StatNumber>
+                                        <StatNumber color={totalPnL >= 0 ? 'green.500' : 'red.500'}>₹{totalPnL.toFixed(2)}</StatNumber>
                                     </Stat>
                                 </CardBody>
                             </Card>
@@ -257,7 +270,7 @@ const Dashboard = () => {
                                 <CardBody>
                                     <Stat>
                                         <StatLabel>Total Balance</StatLabel>
-                                        <StatNumber>${totalBalance.toLocaleString()}</StatNumber>
+                                        <StatNumber>₹{totalBalance.toLocaleString()}</StatNumber>
                                     </Stat>
                                 </CardBody>
                             </Card>
@@ -265,7 +278,7 @@ const Dashboard = () => {
                                 <CardBody>
                                     <Stat>
                                         <StatLabel>Total Expenses</StatLabel>
-                                        <StatNumber color="red.500">${totalExpenses.toLocaleString()}</StatNumber>
+                                        <StatNumber color="red.500">₹{totalExpenses.toLocaleString()}</StatNumber>
                                     </Stat>
                                 </CardBody>
                             </Card>
@@ -316,7 +329,7 @@ const Dashboard = () => {
                                                 <Tr key={e.id}>
                                                     <Td>{format(parseISO(e.date), 'MMM dd')}</Td>
                                                     <Td>{e.description}</Td>
-                                                    <Td isNumeric fontWeight="bold">-${e.amount}</Td>
+                                                    <Td isNumeric fontWeight="bold">-₹{e.amount}</Td>
                                                 </Tr>
                                             ))}
                                         </Tbody>

@@ -84,7 +84,7 @@ const AddExpenseForm = () => {
                                 <FormLabel>Paid From</FormLabel>
                                 <Select {...register('accountId', { required: true })}>
                                     {accounts.map(acc => (
-                                        <option key={acc.id} value={acc.id}>{acc.name} (${acc.balance})</option>
+                                        <option key={acc.id} value={acc.id}>{acc.name} (₹{acc.balance})</option>
                                     ))}
                                 </Select>
                             </FormControl>

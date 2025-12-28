@@ -46,7 +46,7 @@ const ExpenseList = () => {
                             <Td>{expense.description}</Td>
                             <Td><Badge>{expense.category}</Badge></Td>
                             <Td>{getAccountName(expense.accountId)}</Td>
-                            <Td isNumeric color="red.500">-${expense.amount.toLocaleString()}</Td>
+                            <Td isNumeric color="red.500">-₹{expense.amount.toLocaleString()}</Td>
                         </Tr>
                     ))}
                 </Tbody>

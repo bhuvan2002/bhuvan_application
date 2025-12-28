@@ -1,5 +1,5 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import axios from 'axios';
+import React, { createContext, useContext, useState } from 'react';
+import apiService from '../services/apiService';
 
 interface User {
     username: string;
@@ -26,32 +26,22 @@ export const useAuth = () => {
 };
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-    const [user, setUser] = useState<User | null>(null);
-    const [token, setToken] = useState<string | null>(localStorage.getItem('token'));
-
-    useEffect(() => {
-        const storedToken = localStorage.getItem('token');
-        const storedUser = localStorage.getItem('user');
-        if (storedToken && storedUser) {
-            setToken(storedToken);
-            setUser(JSON.parse(storedUser));
-            axios.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
-        }
-    }, []);
+    const [token, setToken] = useState<string | null>(() => sessionStorage.getItem('token'));
+    const [user, setUser] = useState<User | null>(() => {
+        const storedUser = sessionStorage.getItem('user');
+        return storedUser ? JSON.parse(storedUser) : null;
+    });
 
     const login = async (credentials: any) => {
         try {
-            // Assuming backend is at localhost:3000 based on server.ts
-            const response = await axios.post('http://localhost:3000/api/auth/login', credentials);
+            const response = await apiService.post('/auth/login', credentials);
             const { token, role, username } = response.data;
 
-            localStorage.setItem('token', token);
-            localStorage.setItem('user', JSON.stringify({ username, role }));
+            sessionStorage.setItem('token', token);
+            sessionStorage.setItem('user', JSON.stringify({ username, role }));
 
             setToken(token);
             setUser({ username, role });
-
-            axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
         } catch (error) {
             console.error("Login failed", error);
             throw error;
@@ -60,7 +50,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const register = async (userData: any) => {
         try {
-            await axios.post('http://localhost:3000/api/auth/register', userData);
+            await apiService.post('/auth/register', userData);
         } catch (error) {
             console.error("Registration failed", error);
             throw error;
@@ -68,11 +58,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     const logout = () => {
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
+        sessionStorage.removeItem('token');
+        sessionStorage.removeItem('user');
         setToken(null);
         setUser(null);
-        delete axios.defaults.headers.common['Authorization'];
     };
 
     const value = {

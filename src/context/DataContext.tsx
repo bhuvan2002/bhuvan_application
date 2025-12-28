@@ -1,15 +1,22 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
 import type { Trade, Account, Expense, Todo } from '../types';
 import { useAuth } from './AuthContext';
+import apiService from '../services/apiService';
 
 interface DataContextType {
     trades: Trade[];
     accounts: Account[];
     expenses: Expense[];
     todos: Todo[];
+    fetchTrades: () => Promise<void>;
+    fetchAccounts: () => Promise<void>;
+    fetchExpenses: () => Promise<void>;
+    fetchTodos: () => Promise<void>;
     addTrade: (trade: Trade) => void;
     deleteTrade: (id: string) => void;
     addAccount: (account: Account) => void;
+    updateAccount: (account: Account) => void;
+    deleteAccount: (id: string) => void;
     addExpense: (expense: Expense) => void;
     addTodo: (todo: Todo) => void;
     toggleTodo: (id: string) => void;
@@ -26,66 +33,62 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
     const [expenses, setExpenses] = useState<Expense[]>([]);
     const [todos, setTodos] = useState<Todo[]>([]);
 
-    const API_URL = 'http://localhost:3000/api';
-
-    const getHeaders = (authToken: string | null = token) => ({
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${authToken}`
-    });
-
     const logout = () => {
-        // Clear data on logout keying off dependency
         setTrades([]);
         setAccounts([]);
         setExpenses([]);
         setTodos([]);
     };
 
-    const fetchData = async (authToken: string | null = token) => {
-        if (!authToken) {
-            logout(); // Clear data if no token
-            return;
-        }
+    const fetchTrades = async () => {
+        if (!token) return;
         try {
-            const [tradesRes, accountsRes, expensesRes, todosRes] = await Promise.all([
-                fetch(`${API_URL}/trades`, { headers: getHeaders(authToken) }),
-                fetch(`${API_URL}/accounts`, { headers: getHeaders(authToken) }),
-                fetch(`${API_URL}/expenses`, { headers: getHeaders(authToken) }),
-                fetch(`${API_URL}/todos`, { headers: getHeaders(authToken) })
-            ]);
-
-            if (tradesRes.ok) setTrades(await tradesRes.json());
-            if (accountsRes.ok) setAccounts(await accountsRes.json());
-            if (expensesRes.ok) setExpenses(await expensesRes.json());
-            if (todosRes.ok) setTodos(await todosRes.json());
+            const res = await apiService.get('/trades');
+            setTrades(res.data);
         } catch (error) {
-            console.error('Failed to fetch data:', error);
-            if (String(error).includes('403') || String(error).includes('401')) {
-                // authLogout(); // Let AuthContext handle logout state, we just react to token change? 
-                // Currently AuthContext doesn't expose a way to force logout from here unless we use useAuth().logout
-                // But if token is invalid, we will eventually get a 401.
-            }
+            console.error('Failed to fetch trades:', error);
+        }
+    };
+
+    const fetchAccounts = async () => {
+        if (!token) return;
+        try {
+            const res = await apiService.get('/accounts');
+            setAccounts(res.data);
+        } catch (error) {
+            console.error('Failed to fetch accounts:', error);
+        }
+    };
+
+    const fetchExpenses = async () => {
+        if (!token) return;
+        try {
+            const res = await apiService.get('/expenses');
+            setExpenses(res.data);
+        } catch (error) {
+            console.error('Failed to fetch expenses:', error);
+        }
+    };
+
+    const fetchTodos = async () => {
+        if (!token) return;
+        try {
+            const res = await apiService.get('/todos');
+            setTodos(res.data);
+        } catch (error) {
+            console.error('Failed to fetch todos:', error);
         }
     };
 
     useEffect(() => {
-        if (token) {
-            fetchData(token);
-        } else {
-            logout();
-        }
+        if (!token) logout();
     }, [token]);
 
     const addTrade = async (trade: Trade) => {
         try {
-            const res = await fetch(`${API_URL}/trades`, {
-                method: 'POST',
-                headers: getHeaders(),
-                body: JSON.stringify(trade)
-            });
-            if (res.ok) {
-                const newTrade = await res.json();
-                setTrades(prev => [newTrade, ...prev]);
+            const res = await apiService.post('/trades', trade);
+            if (res.status === 200 || res.status === 201) {
+                setTrades(prev => [res.data, ...prev]);
             }
         } catch (error) {
             console.error('Failed to add trade:', error);
@@ -94,11 +97,8 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
 
     const deleteTrade = async (id: string) => {
         try {
-            const res = await fetch(`${API_URL}/trades/${id}`, {
-                method: 'DELETE',
-                headers: getHeaders()
-            });
-            if (res.ok) {
+            const res = await apiService.delete(`/trades/${id}`);
+            if (res.status === 200 || res.status === 204) {
                 setTrades(prev => prev.filter(t => t.id !== id));
             }
         } catch (error) {
@@ -108,34 +108,46 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
 
     const addAccount = async (account: Account) => {
         try {
-            const res = await fetch(`${API_URL}/accounts`, {
-                method: 'POST',
-                headers: getHeaders(),
-                body: JSON.stringify(account)
-            });
-            if (res.ok) {
-                const newAccount = await res.json();
-                setAccounts(prev => [...prev, newAccount]);
+            const res = await apiService.post('/accounts', account);
+            if (res.status === 200 || res.status === 201) {
+                setAccounts(prev => [...prev, res.data]);
             }
         } catch (error) {
             console.error('Failed to add account:', error);
         }
     };
 
+    const updateAccount = async (account: Account) => {
+        try {
+            const res = await apiService.put(`/accounts/${account.id}`, account);
+            if (res.status === 200) {
+                setAccounts(prev => prev.map(a => a.id === account.id ? res.data : a));
+            }
+        } catch (error) {
+            console.error('Failed to update account:', error);
+        }
+    };
+
+    const deleteAccount = async (id: string) => {
+        try {
+            const res = await apiService.delete(`/accounts/${id}`);
+            if (res.status === 200 || res.status === 204) {
+                setAccounts(prev => prev.filter(a => a.id !== id));
+            }
+        } catch (error) {
+            console.error('Failed to delete account:', error);
+        }
+    };
+
     const addExpense = async (expense: Expense) => {
         try {
-            const res = await fetch(`${API_URL}/expenses`, {
-                method: 'POST',
-                headers: getHeaders(),
-                body: JSON.stringify(expense)
-            });
-            if (res.ok) {
-                const newExpense = await res.json();
-                setExpenses(prev => [newExpense, ...prev]);
+            const res = await apiService.post('/expenses', expense);
+            if (res.status === 200 || res.status === 201) {
+                setExpenses(prev => [res.data, ...prev]);
 
                 // Refresh accounts to get updated balance
-                const accountsRes = await fetch(`${API_URL}/accounts`, { headers: getHeaders() });
-                if (accountsRes.ok) setAccounts(await accountsRes.json());
+                const accountsRes = await apiService.get('/accounts');
+                if (accountsRes.status === 200) setAccounts(accountsRes.data);
             }
         } catch (error) {
             console.error('Failed to add expense:', error);
@@ -144,14 +156,9 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
 
     const addTodo = async (todo: Todo) => {
         try {
-            const res = await fetch(`${API_URL}/todos`, {
-                method: 'POST',
-                headers: getHeaders(),
-                body: JSON.stringify(todo)
-            });
-            if (res.ok) {
-                const newTodo = await res.json();
-                setTodos(prev => [newTodo, ...prev]);
+            const res = await apiService.post('/todos', todo);
+            if (res.status === 200 || res.status === 201) {
+                setTodos(prev => [res.data, ...prev]);
             }
         } catch (error) {
             console.error('Failed to add todo:', error);
@@ -162,14 +169,9 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
         const todo = todos.find(t => t.id === id);
         if (!todo) return;
         try {
-            const res = await fetch(`${API_URL}/todos/${id}`, {
-                method: 'PATCH',
-                headers: getHeaders(),
-                body: JSON.stringify({ isComplete: !todo.isComplete })
-            });
-            if (res.ok) {
-                const updated = await res.json();
-                setTodos(prev => prev.map(t => t.id === id ? updated : t));
+            const res = await apiService.patch(`/todos/${id}`, { isComplete: !todo.isComplete });
+            if (res.status === 200) {
+                setTodos(prev => prev.map(t => t.id === id ? res.data : t));
             }
         } catch (error) {
             console.error('Failed to toggle todo:', error);
@@ -178,11 +180,8 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
 
     const deleteTodo = async (id: string) => {
         try {
-            const res = await fetch(`${API_URL}/todos/${id}`, {
-                method: 'DELETE',
-                headers: getHeaders()
-            });
-            if (res.ok) {
+            const res = await apiService.delete(`/todos/${id}`);
+            if (res.status === 200 || res.status === 204) {
                 setTodos(prev => prev.filter(t => t.id !== id));
             }
         } catch (error) {
@@ -192,14 +191,9 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
 
     const updateTodo = async (updated: Todo) => {
         try {
-            const res = await fetch(`${API_URL}/todos/${updated.id}`, {
-                method: 'PATCH',
-                headers: getHeaders(),
-                body: JSON.stringify(updated)
-            });
-            if (res.ok) {
-                const newTodo = await res.json();
-                setTodos(prev => prev.map(t => t.id === updated.id ? newTodo : t));
+            const res = await apiService.patch(`/todos/${updated.id}`, updated);
+            if (res.status === 200) {
+                setTodos(prev => prev.map(t => t.id === updated.id ? res.data : t));
             }
         } catch (error) {
             console.error('Failed to update todo:', error);
@@ -209,8 +203,9 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
     return (
         <DataContext.Provider value={{
             trades, accounts, expenses, todos,
+            fetchTrades, fetchAccounts, fetchExpenses, fetchTodos,
             addTrade, deleteTrade,
-            addAccount, addExpense,
+            addAccount, updateAccount, deleteAccount, addExpense,
             addTodo, toggleTodo, deleteTodo, updateTodo
         }}>
             {children}
