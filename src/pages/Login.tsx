@@ -21,12 +21,13 @@ import {
     Icon,
     IconButton,
     InputGroup,
-    InputRightElement,
     Checkbox
 } from '@chakra-ui/react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { FiLock, FiUser, FiArrowRight, FiEye, FiEyeOff } from 'react-icons/fi';
+import loginPhoto from '../assets/login_photo.png';
+
 
 const Login = () => {
     const [username, setUsername] = useState('');
@@ -108,7 +109,7 @@ const Login = () => {
                 bg="blue.900"
             >
                 <Image
-                    src="/login_photo.png"
+                    src={loginPhoto}
                     alt="Trading Analytics"
                     objectFit="cover"
                     w="100%"

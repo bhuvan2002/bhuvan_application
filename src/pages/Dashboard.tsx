@@ -100,7 +100,7 @@ const Dashboard = () => {
 
     return (
         <Box>
-            <Heading mb={6}>Dashboard</Heading>
+            <Heading mb={6}>Dashboard of Bhuvan U Kadlas</Heading>
 
             <Tabs variant="enclosed" colorScheme="blue" isLazy>
                 <TabList>
