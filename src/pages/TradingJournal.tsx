@@ -111,9 +111,11 @@ const TradingJournal = () => {
                         <TabPanel p={0} h="full">
                             <Box h="full" bg={bgColor} borderRadius="lg" p={2}>
                                 <TradingViewWidget
+                                    key={`${selectedSymbol}-${useColorModeValue('light', 'dark')}`}
                                     symbol={selectedSymbol}
                                     theme={useColorModeValue('light', 'dark') as 'light' | 'dark'}
                                 />
+
                             </Box>
                         </TabPanel>
                     </TabPanels>

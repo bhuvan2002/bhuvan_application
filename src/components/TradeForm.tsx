@@ -25,32 +25,14 @@ import { useForm } from 'react-hook-form';
 import { v4 as uuidv4 } from 'uuid';
 import { useData } from '../context/DataContext';
 import type { Trade } from '../types';
-import { useEffect } from 'react';
 
 const TradeForm = () => {
     const { isOpen, onOpen, onClose } = useDisclosure();
     const { addTrade } = useData();
     const toast = useToast();
-    const { register, handleSubmit, watch, setValue, reset } = useForm<Trade>();
+    const { register, handleSubmit, watch, reset } = useForm<Trade>();
 
-    // Auto-calculate P&L based on entry/exit/lot size
-    const entryPrice = watch('entryPrice');
-    const exitPrice = watch('exitPrice');
-    const lotSize = watch('lotSize');
-    const type = watch('type');
     const pnlValue = watch('pnl');
-
-    useEffect(() => {
-        if (entryPrice && exitPrice && lotSize && type) {
-            const diff = type === 'BUY' ? (Number(exitPrice) - Number(entryPrice)) : (Number(entryPrice) - Number(exitPrice));
-            // Standard Forex/CFD P&L approx calculation: (Price Diff) * LotSize * ContractSize (assuming standard 100k or just simple unit math for now)
-            // For simplicity in this app, we'll assume direct unit multiplication unless specified otherwise: (Diff * Lot)
-            // Adjusting based on user context might be needed, but for now strict math:
-            const pnl = diff * Number(lotSize);
-            // Often "Lot Size" in simple trackers implies "Quantity", so (Exit - Entry) * Qty
-            setValue('pnl', parseFloat(pnl.toFixed(2)));
-        }
-    }, [entryPrice, exitPrice, lotSize, type, setValue]);
 
     const onSubmit = (data: any) => {
         const newTrade: Trade = {
@@ -79,25 +61,25 @@ const TradeForm = () => {
 
             <Modal isOpen={isOpen} onClose={onClose} size="4xl" isCentered>
                 <ModalOverlay backdropFilter="blur(2px)" />
-                <ModalContent>
-                    <ModalHeader>Log New Trade</ModalHeader>
+                <ModalContent shadow="2xl" borderRadius="xl">
+                    <ModalHeader borderBottomWidth="1px">Log New Trade</ModalHeader>
                     <ModalCloseButton />
-                    <ModalBody pb={6}>
+                    <ModalBody pb={6} pt={6}>
                         <VStack as="form" spacing={6} id="trade-form" onSubmit={handleSubmit(onSubmit)}>
 
                             {/* Top Section: Date & Main Info */}
                             <SimpleGrid columns={{ base: 1, md: 3 }} spacing={6} w="full">
                                 <FormControl isRequired>
-                                    <FormLabel>Date & Time</FormLabel>
-                                    <Input type="datetime-local" {...register('date', { required: true })} />
+                                    <FormLabel fontSize="sm" fontWeight="bold">Date & Time</FormLabel>
+                                    <Input type="datetime-local" {...register('date', { required: true })} borderRadius="md" />
                                 </FormControl>
                                 <FormControl isRequired>
-                                    <FormLabel>Symbol / Ticker</FormLabel>
-                                    <Input placeholder="e.g. EURUSD, NVDA, BTC" {...register('symbol', { required: true })} />
+                                    <FormLabel fontSize="sm" fontWeight="bold">Symbol / Ticker</FormLabel>
+                                    <Input placeholder="e.g. EURUSD, NVDA, BTC" {...register('symbol', { required: true })} borderRadius="md" />
                                 </FormControl>
                                 <FormControl isRequired>
-                                    <FormLabel>Strategy</FormLabel>
-                                    <Select placeholder="Select Strategy" {...register('strategy', { required: true })}>
+                                    <FormLabel fontSize="sm" fontWeight="bold">Strategy</FormLabel>
+                                    <Select placeholder="Select Strategy" {...register('strategy', { required: true })} borderRadius="md">
                                         <option value="Breakout">Breakout</option>
                                         <option value="Reversal">Reversal</option>
                                         <option value="Trend Following">Trend Following</option>
@@ -115,41 +97,42 @@ const TradeForm = () => {
                                 {/* Column 1: Trade Specs */}
                                 <VStack spacing={4} align="stretch">
                                     <FormControl isRequired>
-                                        <FormLabel>Type</FormLabel>
-                                        <Select {...register('type', { required: true })}>
+                                        <FormLabel fontSize="sm" fontWeight="bold">Type</FormLabel>
+                                        <Select {...register('type', { required: true })} borderRadius="md">
                                             <option value="BUY">Buy / Long</option>
                                             <option value="SELL">Sell / Short</option>
                                         </Select>
                                     </FormControl>
                                     <FormControl isRequired>
-                                        <FormLabel>Position Size (Qty/Lots)</FormLabel>
-                                        <Input type="number" step="0.01" {...register('lotSize', { required: true })} />
+                                        <FormLabel fontSize="sm" fontWeight="bold">Position Size (Qty/Lots)</FormLabel>
+                                        <Input type="number" step="0.01" {...register('lotSize', { required: true })} borderRadius="md" />
                                     </FormControl>
                                 </VStack>
 
                                 {/* Column 2: Price Points */}
                                 <VStack spacing={4} align="stretch">
                                     <FormControl isRequired>
-                                        <FormLabel>Entry Price</FormLabel>
-                                        <Input type="number" step="0.0001" placeholder="0.0000" {...register('entryPrice', { required: true })} />
+                                        <FormLabel fontSize="sm" fontWeight="bold">Entry Price</FormLabel>
+                                        <Input type="number" step="0.0001" placeholder="0.0000" {...register('entryPrice', { required: true })} borderRadius="md" />
                                     </FormControl>
                                     <FormControl isRequired>
-                                        <FormLabel>Exit Price</FormLabel>
-                                        <Input type="number" step="0.0001" placeholder="0.0000" {...register('exitPrice', { required: true })} />
+                                        <FormLabel fontSize="sm" fontWeight="bold">Exit Price</FormLabel>
+                                        <Input type="number" step="0.0001" placeholder="0.0000" {...register('exitPrice', { required: true })} borderRadius="md" />
                                     </FormControl>
                                 </VStack>
 
-                                {/* Column 3: P&L Input (Manual or Auto) */}
+                                {/* Column 3: P&L Input (Manual) */}
                                 <Card
-                                    bg={pnlValue > 0 ? 'green.50' : (pnlValue < 0 ? 'red.50' : 'gray.50')}
-                                    borderColor={pnlValue > 0 ? 'green.400' : (pnlValue < 0 ? 'red.400' : 'gray.200')}
+                                    bg={(pnlValue || 0) > 0 ? 'green.50' : ((pnlValue || 0) < 0 ? 'red.50' : 'gray.50')}
+                                    borderColor={(pnlValue || 0) > 0 ? 'green.400' : ((pnlValue || 0) < 0 ? 'red.400' : 'gray.200')}
                                     borderWidth="2px"
                                     boxShadow="sm"
+                                    borderRadius="lg"
                                 >
                                     <CardBody>
                                         <FormControl isRequired>
-                                            <FormLabel fontWeight="bold" textAlign="center">
-                                                Profit / Loss {pnlValue > 0 ? '(Profit)' : (pnlValue < 0 ? '(Loss)' : '')}
+                                            <FormLabel fontWeight="bold" textAlign="center" fontSize="sm">
+                                                Net Profit / Loss
                                             </FormLabel>
                                             <Input
                                                 type="number"
@@ -160,10 +143,12 @@ const TradeForm = () => {
                                                 color={(pnlValue || 0) > 0 ? 'green.500' : ((pnlValue || 0) < 0 ? 'red.500' : 'gray.700')}
                                                 bg="white"
                                                 _dark={{ bg: 'gray.800' }}
+                                                placeholder="0.00"
                                                 {...register('pnl', { required: true })}
+                                                borderRadius="md"
                                             />
-                                            <Text fontSize="sm" color="gray.500" textAlign="center" mt={2}>
-                                                Auto-calculated. Manual override allowed.
+                                            <Text fontSize="xs" color="gray.500" textAlign="center" mt={2} fontWeight="medium">
+                                                Enter your actual P&L from the trade
                                             </Text>
                                         </FormControl>
                                     </CardBody>

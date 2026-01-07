@@ -23,6 +23,7 @@ export interface Expense {
     category: string;
     description: string;
     accountId: string;
+    type?: 'CREDIT' | 'DEBIT';
 }
 
 export interface Trade {

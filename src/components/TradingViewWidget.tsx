@@ -1,80 +1,65 @@
-import { useEffect, useRef, memo } from 'react';
-import { Box } from '@chakra-ui/react';
+import { useEffect, useRef } from 'react';
 
-interface TradingViewWidgetProps {
-    symbol?: string;
-    theme?: 'light' | 'dark';
-    height?: string | number;
-}
+type Props = {
+    symbol: string;
+    theme: 'light' | 'dark';
+};
 
-declare global {
-    interface Window {
-        TradingView: any;
-    }
-}
-
-const TradingViewWidget = ({
-    symbol = 'OANDA:XAUUSD',
-    theme = 'dark',
-    height = 500
-}: TradingViewWidgetProps) => {
-    const containerId = 'tradingview_advanced_chart';
-    const widgetRef = useRef<any>(null);
+const TradingViewWidget = ({ symbol, theme }: Props) => {
+    const containerRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
-        const scriptId = 'tradingview-widget-script';
-        let script = document.getElementById(scriptId) as HTMLScriptElement;
+        if (!containerRef.current) return;
 
-        const initWidget = () => {
-            if (typeof window.TradingView !== 'undefined' && document.getElementById(containerId)) {
-                widgetRef.current = new window.TradingView.widget({
-                    autosize: true,
-                    symbol: symbol,
-                    interval: "D",
-                    timezone: "Etc/UTC",
-                    theme: theme,
-                    style: "1",
-                    locale: "en",
-                    enable_publishing: false,
-                    allow_symbol_change: true,
-                    container_id: containerId,
-                });
-            }
+        containerRef.current.innerHTML = '';
+
+        const script = document.createElement('script');
+        script.src = 'https://s3.tradingview.com/tv.js';
+        script.async = true;
+
+        script.onload = () => {
+            new (window as any).TradingView.widget({
+                autosize: true,
+                symbol,
+                interval: '15',
+                timezone: 'Asia/Kolkata',
+                theme,
+                style: '1',
+                locale: 'en',
+                enable_publishing: false,
+                allow_symbol_change: true,
+                hide_top_toolbar: false,
+                hide_legend: false,
+                save_image: true,
+                container_id: containerRef.current!.id,
+                studies: [
+                    'Volume@tv-basicstudies',
+                    'Moving Average@tv-basicstudies',
+                    'RSI@tv-basicstudies',
+                    'MACD@tv-basicstudies'
+                ],
+                withdateranges: true,
+                details: true,
+                hotlist: true,
+                calendar: true,
+                support_host: 'https://www.tradingview.com'
+            });
         };
 
-        if (!script) {
-            script = document.createElement('script');
-            script.id = scriptId;
-            script.src = 'https://s3.tradingview.com/tv.js';
-            script.type = 'text/javascript';
-            script.onload = initWidget;
-            document.head.appendChild(script);
-        } else {
-            initWidget();
-        }
+        document.body.appendChild(script);
 
         return () => {
-            // Clean up: The widget script creates an iframe. We can leave it or clear the div.
-            // When symbol changes, the useEffect re-runs and initWidget overwrites the div.
+            document.body.removeChild(script);
         };
     }, [symbol, theme]);
 
     return (
-        <Box
-            h={height}
-            w="full"
-            borderRadius="lg"
-            overflow="hidden"
-            bg={theme === 'dark' ? 'gray.900' : 'white'}
-            boxShadow="xl"
-            position="relative"
-        >
-            <div
-                id={containerId}
-                style={{ height: '100%', width: '100%' }}
-            />
-        </Box>
+        <div
+            id="tradingview_container"
+            ref={containerRef}
+            style={{ width: '100%', height: '100%' }}
+        />
     );
-}
+};
 
-export default memo(TradingViewWidget);
+export default TradingViewWidget;
