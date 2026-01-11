@@ -18,17 +18,32 @@ import {
     Th,
     Td,
     Badge,
-    Stat,
+    StatArrow,
+    GridItem,
+    Modal,
+    ModalOverlay,
+    ModalContent,
+    ModalHeader,
+    ModalCloseButton,
+    ModalBody,
+    useDisclosure,
     StatLabel,
     StatNumber,
     StatHelpText,
-    StatArrow,
-    GridItem
+    Stat,
+    Input,
+    Select,
+    InputGroup,
+    InputLeftElement,
+    HStack,
 } from '@chakra-ui/react';
 import { useData } from '../context/DataContext';
 import { useEffect } from 'react';
 
-import { format, isToday, isTomorrow, parseISO } from 'date-fns';
+import { format, isToday, isTomorrow, parseISO, isSameMonth, isSameYear } from 'date-fns';
+import { useState, useMemo } from 'react';
+import type { Expense } from '../types';
+import { SearchIcon } from '@chakra-ui/icons';
 import {
     LineChart,
     Line,
@@ -50,6 +65,11 @@ const Dashboard = () => {
         trades, accounts, expenses, todos,
         fetchTrades, fetchAccounts, fetchExpenses, fetchTodos
     } = useData();
+
+    const { isOpen, onOpen, onClose } = useDisclosure();
+    const [detailData, setDetailData] = useState<{ title: string; data: Expense[] }>({ title: '', data: [] });
+    const [searchQuery, setSearchQuery] = useState('');
+    const [filterCategory, setFilterCategory] = useState('');
 
     useEffect(() => {
         fetchTrades();
@@ -83,7 +103,16 @@ const Dashboard = () => {
 
     // --- Finance Metrics ---
     const totalBalance = accounts.reduce((acc, a) => acc + a.balance, 0);
-    const totalExpenses = expenses.reduce((acc, e) => acc + e.amount, 0);
+    const totalCredit = expenses.filter(e => e.type === 'CREDIT').reduce((acc, e) => acc + e.amount, 0);
+    const totalDebit = expenses.filter(e => e.type === 'DEBIT' || !e.type).reduce((acc, e) => acc + e.amount, 0);
+
+    const todaySpent = expenses
+        .filter(e => (e.type === 'DEBIT' || !e.type) && isToday(parseISO(e.date)))
+        .reduce((acc, e) => acc + e.amount, 0);
+
+    const monthlySpent = expenses
+        .filter(e => (e.type === 'DEBIT' || !e.type) && isSameMonth(parseISO(e.date), new Date()) && isSameYear(parseISO(e.date), new Date()))
+        .reduce((acc, e) => acc + e.amount, 0);
 
     // Expenses by Category
     const expensesByCategory = expenses.reduce((acc, e) => {
@@ -93,6 +122,49 @@ const Dashboard = () => {
 
     const expensePieData = Object.entries(expensesByCategory).map(([name, value]) => ({ name, value }));
     const PIE_COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
+
+    const handleMetricClick = (type: 'CREDIT' | 'DEBIT' | 'TODAY' | 'MONTHLY') => {
+        let filtered: Expense[] = [];
+        let title = '';
+
+        switch (type) {
+            case 'CREDIT':
+                filtered = expenses.filter(e => e.type === 'CREDIT');
+                title = 'Credit / Income Details';
+                break;
+            case 'DEBIT':
+                filtered = expenses.filter(e => e.type === 'DEBIT' || !e.type);
+                title = 'Debit / Expense Details';
+                break;
+            case 'TODAY':
+                filtered = expenses.filter(e => (e.type === 'DEBIT' || !e.type) && isToday(parseISO(e.date)));
+                title = "Today's Spent Details";
+                break;
+            case 'MONTHLY':
+                filtered = expenses.filter(e => (e.type === 'DEBIT' || !e.type) && isSameMonth(parseISO(e.date), new Date()) && isSameYear(parseISO(e.date), new Date()));
+                title = `Monthly Expenses - ${format(new Date(), 'MMMM yyyy')}`;
+                break;
+        }
+
+        setDetailData({ title, data: filtered });
+        setSearchQuery('');
+        setFilterCategory('');
+        onOpen();
+    };
+
+    const filteredModalData = useMemo(() => {
+        return detailData.data.filter(item => {
+            const matchesSearch = item.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                item.category.toLowerCase().includes(searchQuery.toLowerCase());
+            const matchesCategory = filterCategory === '' || item.category === filterCategory;
+            return matchesSearch && matchesCategory;
+        });
+    }, [detailData.data, searchQuery, filterCategory]);
+
+    const modalCategories = useMemo(() => {
+        const cats = new Set(detailData.data.map(item => item.category));
+        return Array.from(cats);
+    }, [detailData.data]);
 
     // --- Productivity Metrics ---
     const upcomingTodos = todos.filter(t => !t.isComplete && (isToday(new Date(t.dueDate)) || isTomorrow(new Date(t.dueDate))));
@@ -156,7 +228,7 @@ const Dashboard = () => {
                                         <ResponsiveContainer width="100%" height="100%">
                                             <BarChart data={[
                                                 { name: 'Income/P&L', amount: totalPnL }, // Simplified
-                                                { name: 'Expenses', amount: totalExpenses }
+                                                { name: 'Expenses', amount: totalDebit }
                                             ]}>
                                                 <CartesianGrid strokeDasharray="3 3" />
                                                 <XAxis dataKey="name" />
@@ -265,20 +337,65 @@ const Dashboard = () => {
 
                     {/* --- FINANCE TAB --- */}
                     <TabPanel px={0}>
-                        <SimpleGrid columns={{ base: 1, md: 2 }} spacing={6} mb={8}>
-                            <Card>
+                        <SimpleGrid columns={{ base: 1, md: 4 }} spacing={6} mb={8}>
+                            <Card
+                                borderTop="4px"
+                                borderColor="green.400"
+                                cursor="pointer"
+                                onClick={() => handleMetricClick('CREDIT')}
+                                _hover={{ shadow: 'lg', transform: 'translateY(-2px)' }}
+                                transition="all 0.2s"
+                            >
                                 <CardBody>
                                     <Stat>
-                                        <StatLabel>Total Balance</StatLabel>
-                                        <StatNumber>₹{totalBalance.toLocaleString()}</StatNumber>
+                                        <StatLabel>Total Credit</StatLabel>
+                                        <StatNumber color="green.500">₹{totalCredit.toLocaleString()}</StatNumber>
                                     </Stat>
                                 </CardBody>
                             </Card>
-                            <Card>
+                            <Card
+                                borderTop="4px"
+                                borderColor="red.400"
+                                cursor="pointer"
+                                onClick={() => handleMetricClick('DEBIT')}
+                                _hover={{ shadow: 'lg', transform: 'translateY(-2px)' }}
+                                transition="all 0.2s"
+                            >
                                 <CardBody>
                                     <Stat>
-                                        <StatLabel>Total Expenses</StatLabel>
-                                        <StatNumber color="red.500">₹{totalExpenses.toLocaleString()}</StatNumber>
+                                        <StatLabel>Total Debit</StatLabel>
+                                        <StatNumber color="red.500">₹{totalDebit.toLocaleString()}</StatNumber>
+                                    </Stat>
+                                </CardBody>
+                            </Card>
+                            <Card
+                                borderTop="4px"
+                                borderColor="orange.400"
+                                cursor="pointer"
+                                onClick={() => handleMetricClick('TODAY')}
+                                _hover={{ shadow: 'lg', transform: 'translateY(-2px)' }}
+                                transition="all 0.2s"
+                            >
+                                <CardBody>
+                                    <Stat>
+                                        <StatLabel>Today's Spent</StatLabel>
+                                        <StatNumber color="orange.500">₹{todaySpent.toLocaleString()}</StatNumber>
+                                    </Stat>
+                                </CardBody>
+                            </Card>
+                            <Card
+                                borderTop="4px"
+                                borderColor="purple.400"
+                                cursor="pointer"
+                                onClick={() => handleMetricClick('MONTHLY')}
+                                _hover={{ shadow: 'lg', transform: 'translateY(-2px)' }}
+                                transition="all 0.2s"
+                            >
+                                <CardBody>
+                                    <Stat>
+                                        <StatLabel>Monthly Expenses</StatLabel>
+                                        <StatNumber color="purple.500">₹{monthlySpent.toLocaleString()}</StatNumber>
+                                        <StatHelpText>{format(new Date(), 'MMMM yyyy')}</StatHelpText>
                                     </Stat>
                                 </CardBody>
                             </Card>
@@ -295,8 +412,6 @@ const Dashboard = () => {
                                                     data={expensePieData}
                                                     cx="50%"
                                                     cy="50%"
-                                                    labelLine={false}
-                                                    label={({ name, percent }) => `${name} ${(percent ? percent * 100 : 0).toFixed(0)}%`}
                                                     outerRadius={100}
                                                     fill="#8884d8"
                                                     dataKey="value"
@@ -315,25 +430,26 @@ const Dashboard = () => {
 
                             <Card minH="400px">
                                 <CardBody>
-                                    <Heading size="md" mb={4}>Recent Expenses</Heading>
+                                    <Heading size="md" mb={4}>Account Balances</Heading>
                                     <Table variant="simple" size="sm">
                                         <Thead>
                                             <Tr>
-                                                <Th>Date</Th>
-                                                <Th>Desc</Th>
-                                                <Th isNumeric>Amount</Th>
+                                                <Th>Account</Th>
+                                                <Th>Bank</Th>
+                                                <Th isNumeric>Balance</Th>
                                             </Tr>
                                         </Thead>
                                         <Tbody>
-                                            {[...expenses].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 8).map(e => (
-                                                <Tr key={e.id}>
-                                                    <Td>{format(parseISO(e.date), 'MMM dd')}</Td>
-                                                    <Td>{e.description}</Td>
-                                                    <Td isNumeric fontWeight="bold">-₹{e.amount}</Td>
+                                            {accounts.map(acc => (
+                                                <Tr key={acc.id}>
+                                                    <Td>{acc.name}</Td>
+                                                    <Td>{acc.bankName}</Td>
+                                                    <Td isNumeric fontWeight="bold">₹{acc.balance.toLocaleString()}</Td>
                                                 </Tr>
                                             ))}
                                         </Tbody>
                                     </Table>
+                                    {accounts.length === 0 && <Text color="gray.500" mt={4}>No accounts found.</Text>}
                                 </CardBody>
                             </Card>
                         </SimpleGrid>
@@ -380,6 +496,66 @@ const Dashboard = () => {
                     </TabPanel>
                 </TabPanels>
             </Tabs>
+
+            <Modal isOpen={isOpen} onClose={onClose} size="3xl">
+                <ModalOverlay backdropFilter="blur(4px)" />
+                <ModalContent borderRadius="xl">
+                    <ModalHeader borderBottomWidth="1px">{detailData.title}</ModalHeader>
+                    <ModalCloseButton />
+                    <ModalBody py={6}>
+                        <HStack mb={4} spacing={4}>
+                            <InputGroup flex={2}>
+                                <InputLeftElement pointerEvents="none">
+                                    <SearchIcon color="gray.300" />
+                                </InputLeftElement>
+                                <Input
+                                    placeholder="Search by description or category..."
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                />
+                            </InputGroup>
+                            <Select
+                                flex={1}
+                                placeholder="All Categories"
+                                value={filterCategory}
+                                onChange={(e) => setFilterCategory(e.target.value)}
+                            >
+                                {modalCategories.map(cat => (
+                                    <option key={cat} value={cat}>{cat}</option>
+                                ))}
+                            </Select>
+                        </HStack>
+
+                        <Table variant="simple" size="sm">
+                            <Thead>
+                                <Tr>
+                                    <Th>Date</Th>
+                                    <Th>Description</Th>
+                                    <Th>Category</Th>
+                                    <Th isNumeric>Amount</Th>
+                                </Tr>
+                            </Thead>
+                            <Tbody>
+                                {filteredModalData.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map(e => (
+                                    <Tr key={e.id}>
+                                        <Td>{format(parseISO(e.date), 'MMM dd, yyyy')}</Td>
+                                        <Td>{e.description}</Td>
+                                        <Td><Badge>{e.category}</Badge></Td>
+                                        <Td isNumeric fontWeight="bold" color={e.type === 'CREDIT' ? 'green.500' : 'red.500'}>
+                                            {e.type === 'CREDIT' ? '+' : '-'}₹{e.amount.toLocaleString()}
+                                        </Td>
+                                    </Tr>
+                                ))}
+                            </Tbody>
+                        </Table>
+                        {filteredModalData.length === 0 && (
+                            <Text textAlign="center" py={10} color="gray.500">
+                                {detailData.data.length === 0 ? 'No transactions found for this period.' : 'No results matching your filters.'}
+                            </Text>
+                        )}
+                    </ModalBody>
+                </ModalContent>
+            </Modal>
         </Box>
     );
 };

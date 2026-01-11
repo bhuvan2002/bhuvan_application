@@ -171,9 +171,12 @@ const AddExpenseForm = () => {
                                         <Select borderRadius="md" {...register('category', { required: true })}>
                                             <option value="Bills">Bills</option>
                                             <option value="Food">Food</option>
+                                            <option value="Groceries">Groceries</option>
                                             <option value="Entertainment">Entertainment</option>
                                             <option value="Transport">Transport</option>
-                                            <option value="Transport">Loan</option>
+                                            <option value="Loan">Loan</option>
+                                            <option value="Vehical Service">Vehical Service</option>
+                                            <option value="Petrol">Petrol</option>
                                             <option value="Shopping">Shopping</option>
                                             <option value="Other">Other</option>
                                         </Select>

@@ -24,24 +24,63 @@ import {
     Divider,
     Icon,
     Button,
+    Table,
+    Thead,
+    Tbody,
+    Tr,
+    Th,
+    Td,
+    InputGroup,
+    InputLeftElement,
+    Input,
+    Select,
 } from '@chakra-ui/react';
-import { DeleteIcon, InfoIcon, EditIcon } from '@chakra-ui/icons';
+import { DeleteIcon, InfoIcon, EditIcon, ViewIcon, SearchIcon } from '@chakra-ui/icons';
 import { useData } from '../context/DataContext';
 import EditAccountForm from './EditAccountForm';
-import { useState } from 'react';
-import type { Account } from '../types';
+import { useState, useMemo } from 'react';
+import type { Account, Expense } from '../types';
+import { format, parseISO } from 'date-fns';
 
 const AccountList = () => {
-    const { accounts, deleteAccount } = useData();
-    const { isOpen, onOpen, onClose } = useDisclosure();
+    const { accounts, deleteAccount, expenses } = useData();
+    const { isOpen: isInfoOpen, onOpen: onInfoOpen, onClose: onInfoClose } = useDisclosure();
+    const { isOpen: isTransOpen, onOpen: onTransOpen, onClose: onTransClose } = useDisclosure();
     const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [filterCategory, setFilterCategory] = useState('');
 
     const activeAccount = accounts.find(a => a.id === selectedAccountId) || null;
 
     const handleCardClick = (account: Account) => {
         setSelectedAccountId(account.id);
-        onOpen();
+        onInfoOpen();
     };
+
+    const handleViewTransactions = (account: Account) => {
+        setSelectedAccountId(account.id);
+        setSearchQuery('');
+        setFilterCategory('');
+        onTransOpen();
+    };
+
+    const accountTransactions = useMemo(() => {
+        return expenses.filter(e => e.accountId === selectedAccountId);
+    }, [expenses, selectedAccountId]);
+
+    const filteredTransactions = useMemo(() => {
+        return accountTransactions.filter(item => {
+            const matchesSearch = item.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                item.category.toLowerCase().includes(searchQuery.toLowerCase());
+            const matchesCategory = filterCategory === '' || item.category === filterCategory;
+            return matchesSearch && matchesCategory;
+        });
+    }, [accountTransactions, searchQuery, filterCategory]);
+
+    const transCategories = useMemo(() => {
+        const cats = new Set(accountTransactions.map(item => item.category));
+        return Array.from(cats);
+    }, [accountTransactions]);
 
     if (accounts.length === 0) {
         return (
@@ -86,6 +125,18 @@ const AccountList = () => {
                                 </Box>
                                 <Spacer />
                                 <HStack spacing={1} onClick={(e) => e.stopPropagation()}>
+                                    <IconButton
+                                        aria-label="View Transactions"
+                                        icon={<ViewIcon />}
+                                        size="sm"
+                                        variant="ghost"
+                                        colorScheme="blue"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleViewTransactions(account);
+                                        }}
+                                        title="View Transactions"
+                                    />
                                     <EditAccountForm account={account} />
                                     <IconButton
                                         aria-label="Delete account"
@@ -117,10 +168,10 @@ const AccountList = () => {
                 ))}
             </SimpleGrid>
 
-            {/* Account Detail Modal */}
-            <Modal isOpen={isOpen} onClose={onClose} isCentered>
+            {/* Account Info Modal */}
+            <Modal isOpen={isInfoOpen} onClose={onInfoClose} isCentered>
                 <ModalOverlay backdropFilter="blur(4px)" />
-                <ModalContent>
+                <ModalContent shadow="2xl">
                     <ModalHeader borderBottomWidth="1px">
                         <HStack justifyContent="space-between">
                             <VStack align="start" spacing={0}>
@@ -157,6 +208,69 @@ const AccountList = () => {
                                 </HStack>
                             </Box>
                         </VStack>
+                    </ModalBody>
+                </ModalContent>
+            </Modal>
+
+            {/* Account Transactions Modal */}
+            <Modal isOpen={isTransOpen} onClose={onTransClose} size="4xl">
+                <ModalOverlay backdropFilter="blur(4px)" />
+                <ModalContent borderRadius="xl" shadow="2xl">
+                    <ModalHeader borderBottomWidth="1px">
+                        Transactions: {activeAccount?.bankName} ({activeAccount?.name})
+                    </ModalHeader>
+                    <ModalCloseButton />
+                    <ModalBody py={6}>
+                        <HStack mb={4} spacing={4}>
+                            <InputGroup flex={2}>
+                                <InputLeftElement pointerEvents="none">
+                                    <SearchIcon color="gray.300" />
+                                </InputLeftElement>
+                                <Input
+                                    placeholder="Search details..."
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                />
+                            </InputGroup>
+                            <Select
+                                flex={1}
+                                placeholder="All Categories"
+                                value={filterCategory}
+                                onChange={(e) => setFilterCategory(e.target.value)}
+                            >
+                                {transCategories.map(cat => (
+                                    <option key={cat} value={cat}>{cat}</option>
+                                ))}
+                            </Select>
+                        </HStack>
+
+                        <Table variant="simple" size="sm">
+                            <Thead>
+                                <Tr>
+                                    <Th>Date</Th>
+                                    <Th>Description</Th>
+                                    <Th>Category</Th>
+                                    <Th isNumeric>Amount</Th>
+                                </Tr>
+                            </Thead>
+                            <Tbody>
+                                {filteredTransactions.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map(e => (
+                                    <Tr key={e.id}>
+                                        <Td>{format(parseISO(e.date), 'MMM dd, yyyy')}</Td>
+                                        <Td>{e.description}</Td>
+                                        <Td><Badge>{e.category}</Badge></Td>
+                                        <Td isNumeric fontWeight="bold" color={e.type === 'CREDIT' ? 'green.500' : 'red.500'}>
+                                            {e.type === 'CREDIT' ? '+' : '-'}₹{e.amount.toLocaleString()}
+                                        </Td>
+                                    </Tr>
+                                ))}
+                            </Tbody>
+                        </Table>
+                        {filteredTransactions.length === 0 && (
+                            <Text textAlign="center" py={10} color="gray.500">
+                                {accountTransactions.length === 0 ? 'No transactions for this account.' : 'No results matching your filters.'}
+                            </Text>
+                        )}
                     </ModalBody>
                 </ModalContent>
             </Modal>
