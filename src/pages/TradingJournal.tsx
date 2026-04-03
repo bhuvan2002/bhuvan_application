@@ -47,6 +47,7 @@ const TradingJournal = () => {
     const { isOpen, onOpen, onClose } = useDisclosure();
     const { fetchTrades } = useData();
     const [selectedSymbol, setSelectedSymbol] = useState('OANDA:XAUUSD');
+    const [tabIndex, setTabIndex] = useState(0);
     const bgColor = useColorModeValue('white', 'gray.800');
 
     const openGoldChart = () => {
@@ -78,28 +79,38 @@ const TradingJournal = () => {
                     <TradeForm />
                 </HStack>
 
-                <Tabs variant="soft-rounded" colorScheme="blue" flex="1" display="flex" flexDirection="column">
+                <Tabs 
+                    variant="soft-rounded" 
+                    colorScheme="blue" 
+                    flex="1" 
+                    display="flex" 
+                    flexDirection="column"
+                    index={tabIndex}
+                    onChange={(index) => setTabIndex(index)}
+                >
                     <HStack justifyContent="space-between" mb={4}>
                         <TabList>
                             <Tab>Analytics</Tab>
                             <Tab>Live Market</Tab>
                         </TabList>
 
-                        <HStack spacing={4}>
-                            <Text fontSize="sm" fontWeight="bold" color="gray.500">Market Select:</Text>
-                            <Select
-                                size="sm"
-                                width="200px"
-                                value={selectedSymbol}
-                                onChange={(e) => setSelectedSymbol(e.target.value)}
-                                borderRadius="full"
-                                bg={bgColor}
-                            >
-                                {SYMBOLS.map(s => (
-                                    <option key={s.value} value={s.value}>{s.label}</option>
-                                ))}
-                            </Select>
-                        </HStack>
+                        {tabIndex === 1 && (
+                            <HStack spacing={4}>
+                                <Text fontSize="sm" fontWeight="bold" color="gray.500">Market Select:</Text>
+                                <Select
+                                    size="sm"
+                                    width="200px"
+                                    value={selectedSymbol}
+                                    onChange={(e) => setSelectedSymbol(e.target.value)}
+                                    borderRadius="full"
+                                    bg={bgColor}
+                                >
+                                    {SYMBOLS.map(s => (
+                                        <option key={s.value} value={s.value}>{s.label}</option>
+                                    ))}
+                                </Select>
+                            </HStack>
+                        )}
                     </HStack>
 
                     <TabPanels flex="1" overflow="hidden">
