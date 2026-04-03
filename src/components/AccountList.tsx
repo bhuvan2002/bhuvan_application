@@ -39,7 +39,7 @@ import { DeleteIcon, InfoIcon, EditIcon, ViewIcon, SearchIcon } from '@chakra-ui
 import { useData } from '../context/DataContext';
 import EditAccountForm from './EditAccountForm';
 import { useState, useMemo } from 'react';
-import type { Account, Expense } from '../types';
+import type { Account } from '../types';
 import { format, parseISO } from 'date-fns';
 
 const AccountList = () => {
