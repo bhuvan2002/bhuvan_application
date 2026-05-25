@@ -23,12 +23,13 @@ import { v4 as uuidv4 } from 'uuid';
 import { useData } from '../context/DataContext';
 import type { Expense } from '../types';
 import { useState } from 'react';
+import AddAccountForm from './AddAccountForm';
 
 const AddExpenseForm = () => {
     const { isOpen, onOpen, onClose } = useDisclosure();
     const { addExpense, accounts } = useData();
     const toast = useToast();
-    const [transactionType, setTransactionType] = useState<'DEBIT' | 'CREDIT'>('DEBIT');
+    const [transactionType, setTransactionType] = useState<'DEBIT' | 'CREDIT' | 'TRANSFER'>('DEBIT');
 
     const { register, handleSubmit, reset, watch } = useForm<Expense>({
         defaultValues: {
@@ -46,11 +47,14 @@ const AddExpenseForm = () => {
             // For credit, if description is empty, use 'Credit to ' + bank name
             description: transactionType === 'CREDIT' && !data.description
                 ? `Credit to ${accounts.find(a => a.id === data.accountId)?.bankName}`
-                : data.description
+                : transactionType === 'TRANSFER' && !data.description
+                ? `Payment to ${accounts.find(a => a.id === data.toAccountId)?.name}`
+                : data.description || 'Transfer'
         };
+        if (transactionType === 'TRANSFER') newExpense.category = 'Transfer';
         addExpense(newExpense);
         toast({
-            title: `${transactionType === 'CREDIT' ? 'Credit' : 'Expense'} recorded.`,
+            title: `${transactionType === 'CREDIT' ? 'Credit' : transactionType === 'TRANSFER' ? 'Transfer' : 'Expense'} recorded.`,
             status: 'success',
             duration: 2000,
         });
@@ -119,6 +123,16 @@ const AddExpenseForm = () => {
                                     >
                                         Credit / Income
                                     </Button>
+                                    <Button
+                                        flex={1}
+                                        size="sm"
+                                        variant={transactionType === 'TRANSFER' ? 'solid' : 'ghost'}
+                                        colorScheme={transactionType === 'TRANSFER' ? 'purple' : 'gray'}
+                                        onClick={() => setTransactionType('TRANSFER')}
+                                        borderRadius="md"
+                                    >
+                                        Pay Bill
+                                    </Button>
                                 </HStack>
                             </FormControl>
 
@@ -134,7 +148,7 @@ const AddExpenseForm = () => {
                                 </FormControl>
                                 <FormControl isRequired flex={1}>
                                     <FormLabel fontSize="sm">
-                                        {transactionType === 'DEBIT' ? 'Amount' : 'Amount Credit'}
+                                        {transactionType === 'DEBIT' ? 'Amount' : transactionType === 'TRANSFER' ? 'Transfer Amount' : 'Amount Credit'}
                                     </FormLabel>
                                     <Input
                                         type="number"
@@ -142,7 +156,7 @@ const AddExpenseForm = () => {
                                         placeholder="0.00"
                                         size="md"
                                         borderRadius="md"
-                                        focusBorderColor={transactionType === 'DEBIT' ? 'red.400' : 'green.400'}
+                                        focusBorderColor={transactionType === 'DEBIT' ? 'red.400' : transactionType === 'TRANSFER' ? 'purple.400' : 'green.400'}
                                         {...register('amount', { required: true })}
                                     />
                                 </FormControl>
@@ -150,19 +164,42 @@ const AddExpenseForm = () => {
 
                             <FormControl isRequired>
                                 <FormLabel fontSize="sm">
-                                    {transactionType === 'DEBIT' ? 'Paid From' : 'Bank Name'}
+                                    {transactionType === 'DEBIT' ? 'Paid From' : transactionType === 'TRANSFER' ? 'Pay From' : 'Bank Name'}
                                 </FormLabel>
                                 <Select
                                     borderRadius="md"
                                     {...register('accountId', { required: true })}
                                 >
-                                    {accounts.map(acc => (
+                                    {accounts.filter(a => transactionType !== 'TRANSFER' || a.type === 'BANK' || !a.type).map(acc => (
                                         <option key={acc.id} value={acc.id}>
-                                            {acc.bankName} - {acc.name} (₹{acc.balance.toLocaleString()})
+                                            {acc.name} {acc.type === 'CREDIT_CARD' || acc.type === 'LOAN' ? `(Owed: ₹${acc.balance.toLocaleString()})` : `(₹${acc.balance.toLocaleString()})`}
                                         </option>
                                     ))}
                                 </Select>
                             </FormControl>
+
+                            {transactionType === 'TRANSFER' && (
+                                <FormControl isRequired>
+                                    <HStack justifyContent="space-between" mb={2}>
+                                        <FormLabel fontSize="sm" mb={0}>Pay To (Credit Card / Loan)</FormLabel>
+                                        <AddAccountForm>
+                                            <Button size="xs" variant="link" colorScheme="blue">
+                                                + Add New
+                                            </Button>
+                                        </AddAccountForm>
+                                    </HStack>
+                                    <Select
+                                        borderRadius="md"
+                                        {...register('toAccountId', { required: true })}
+                                    >
+                                        {accounts.filter(a => a.type === 'CREDIT_CARD' || a.type === 'LOAN').map(acc => (
+                                            <option key={acc.id} value={acc.id}>
+                                                {acc.name} (Owed: ₹{acc.balance.toLocaleString()})
+                                            </option>
+                                        ))}
+                                    </Select>
+                                </FormControl>
+                            )}
 
                             {transactionType === 'DEBIT' ? (
                                 <>
@@ -190,7 +227,7 @@ const AddExpenseForm = () => {
                                         />
                                     </FormControl>
                                 </>
-                            ) : (
+                            ) : transactionType === 'CREDIT' ? (
                                 <VStack width="full" spacing={4}>
                                     <FormControl isRequired>
                                         <FormLabel fontSize="sm">Source of Credit</FormLabel>
@@ -219,6 +256,16 @@ const AddExpenseForm = () => {
                                         </FormControl>
                                     )}
                                 </VStack>
+                            ) : (
+                                <FormControl>
+                                    <FormLabel fontSize="sm">Description (Optional)</FormLabel>
+                                    <Input
+                                        placeholder="e.g. Cleared June CC Bill"
+                                        borderRadius="md"
+                                        focusBorderColor="purple.400"
+                                        {...register('description')}
+                                    />
+                                </FormControl>
                             )}
                         </VStack>
                     </ModalBody>
@@ -228,13 +275,13 @@ const AddExpenseForm = () => {
                             Cancel
                         </Button>
                         <Button
-                            colorScheme={transactionType === 'DEBIT' ? 'red' : 'green'}
+                            colorScheme={transactionType === 'DEBIT' ? 'red' : transactionType === 'TRANSFER' ? 'purple' : 'green'}
                             type="submit"
                             form="add-transaction-form"
                             borderRadius="md"
                             px={8}
                         >
-                            {transactionType === 'DEBIT' ? 'Record Expense' : 'Record Credit'}
+                            {transactionType === 'DEBIT' ? 'Record Expense' : transactionType === 'TRANSFER' ? 'Confirm Payment' : 'Record Credit'}
                         </Button>
                     </ModalFooter>
                 </ModalContent>

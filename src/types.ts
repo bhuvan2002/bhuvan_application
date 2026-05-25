@@ -14,6 +14,10 @@ export interface Account {
     mobileAppKey?: string;
     atmKey?: string;
     balance: number;
+    type?: string;
+    creditLimit?: number | null;
+    dueDate?: number | null;
+    loanEndDate?: string | null;
 }
 
 export interface Expense {
@@ -23,7 +27,8 @@ export interface Expense {
     category: string;
     description: string;
     accountId: string;
-    type?: 'CREDIT' | 'DEBIT';
+    toAccountId?: string;
+    type?: 'CREDIT' | 'DEBIT' | 'TRANSFER';
 }
 
 export interface Trade {

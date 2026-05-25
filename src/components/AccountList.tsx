@@ -104,69 +104,99 @@ const AccountList = () => {
         </Box>
     );
 
+    const renderAccountCards = (accList: Account[], title: string, color: string) => {
+        if (accList.length === 0) return null;
+        return (
+            <Box mb={6}>
+                <Heading size="sm" mb={3} color="gray.600" textTransform="uppercase">{title}</Heading>
+                <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacing={4}>
+                    {accList.map((account) => (
+                        <Card
+                            key={account.id}
+                            borderTop="4px"
+                            borderColor={`${color}.500`}
+                            cursor="pointer"
+                            _hover={{ shadow: 'md', transform: 'translateY(-2px)' }}
+                            transition="all 0.2s"
+                            onClick={() => handleCardClick(account)}
+                        >
+                            <CardHeader pb={0}>
+                                <HStack>
+                                    <Box>
+                                        <Heading size="md">{account.name}</Heading>
+                                        <Text fontSize="sm" color="gray.500">{account.bankName}</Text>
+                                    </Box>
+                                    <Spacer />
+                                    <HStack spacing={1} onClick={(e) => e.stopPropagation()}>
+                                        <IconButton
+                                            aria-label="View Transactions"
+                                            icon={<ViewIcon />}
+                                            size="sm"
+                                            variant="ghost"
+                                            colorScheme="blue"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleViewTransactions(account);
+                                            }}
+                                            title="View Transactions"
+                                        />
+                                        <EditAccountForm account={account} />
+                                        <IconButton
+                                            aria-label="Delete account"
+                                            icon={<DeleteIcon />}
+                                            size="sm"
+                                            variant="ghost"
+                                            colorScheme="red"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                if (window.confirm('Are you sure you want to delete this account?')) {
+                                                    deleteAccount(account.id);
+                                                }
+                                            }}
+                                        />
+                                    </HStack>
+                                </HStack>
+                            </CardHeader>
+                            <CardBody>
+                                <Stat>
+                                    <StatLabel>
+                                        {account.type === 'CREDIT_CARD' || account.type === 'LOAN'
+                                            ? 'Amount Owed / Outstanding'
+                                            : 'Available Balance'}
+                                    </StatLabel>
+                                    <StatNumber color={account.type === 'CREDIT_CARD' || account.type === 'LOAN' ? 'red.500' : 'inherit'}>
+                                        ₹{account.balance.toLocaleString()}
+                                    </StatNumber>
+                                    {account.type === 'CREDIT_CARD' && account.creditLimit && (
+                                        <Text fontSize="xs" color="gray.500">
+                                            Limit: ₹{account.creditLimit.toLocaleString()} (Avail: ₹{(account.creditLimit - account.balance).toLocaleString()})
+                                        </Text>
+                                    )}
+                                </Stat>
+                                <HStack mt={2} justifyContent="space-between">
+                                    <Badge colorScheme="green">Active</Badge>
+                                    {account.dueDate && (
+                                        <Text fontSize="xs" color="gray.500">Due: {account.dueDate}th</Text>
+                                    )}
+                                    <InfoIcon color="gray.400" />
+                                </HStack>
+                            </CardBody>
+                        </Card>
+                    ))}
+                </SimpleGrid>
+            </Box>
+        );
+    };
+
+    const bankAccounts = accounts.filter(a => a.type === 'BANK' || !a.type);
+    const creditCards = accounts.filter(a => a.type === 'CREDIT_CARD');
+    const loans = accounts.filter(a => a.type === 'LOAN');
+
     return (
         <Box>
-            <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacing={4}>
-                {accounts.map((account) => (
-                    <Card
-                        key={account.id}
-                        borderTop="4px"
-                        borderColor="blue.500"
-                        cursor="pointer"
-                        _hover={{ shadow: 'md', transform: 'translateY(-2px)' }}
-                        transition="all 0.2s"
-                        onClick={() => handleCardClick(account)}
-                    >
-                        <CardHeader pb={0}>
-                            <HStack>
-                                <Box>
-                                    <Heading size="md">{account.name}</Heading>
-                                    <Text fontSize="sm" color="gray.500">{account.bankName}</Text>
-                                </Box>
-                                <Spacer />
-                                <HStack spacing={1} onClick={(e) => e.stopPropagation()}>
-                                    <IconButton
-                                        aria-label="View Transactions"
-                                        icon={<ViewIcon />}
-                                        size="sm"
-                                        variant="ghost"
-                                        colorScheme="blue"
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            handleViewTransactions(account);
-                                        }}
-                                        title="View Transactions"
-                                    />
-                                    <EditAccountForm account={account} />
-                                    <IconButton
-                                        aria-label="Delete account"
-                                        icon={<DeleteIcon />}
-                                        size="sm"
-                                        variant="ghost"
-                                        colorScheme="red"
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            if (window.confirm('Are you sure you want to delete this account?')) {
-                                                deleteAccount(account.id);
-                                            }
-                                        }}
-                                    />
-                                </HStack>
-                            </HStack>
-                        </CardHeader>
-                        <CardBody>
-                            <Stat>
-                                <StatLabel>Balance</StatLabel>
-                                <StatNumber>₹{account.balance.toLocaleString()}</StatNumber>
-                            </Stat>
-                            <HStack mt={2} justifyContent="space-between">
-                                <Badge colorScheme="green">Active</Badge>
-                                <InfoIcon color="gray.400" />
-                            </HStack>
-                        </CardBody>
-                    </Card>
-                ))}
-            </SimpleGrid>
+            {renderAccountCards(bankAccounts, 'Bank Accounts', 'blue')}
+            {renderAccountCards(creditCards, 'Credit Cards', 'orange')}
+            {renderAccountCards(loans, 'Loans', 'purple')}
 
             {/* Account Info Modal */}
             <Modal isOpen={isInfoOpen} onClose={onInfoClose} isCentered>

@@ -36,6 +36,7 @@ import {
     InputGroup,
     InputLeftElement,
     HStack,
+    VStack,
 } from '@chakra-ui/react';
 import { useData } from '../context/DataContext';
 import { useEffect } from 'react';
@@ -114,6 +115,72 @@ const Dashboard = () => {
         .filter(e => (e.type === 'DEBIT' || !e.type) && isSameMonth(parseISO(e.date), new Date()) && isSameYear(parseISO(e.date), new Date()))
         .reduce((acc, e) => acc + e.amount, 0);
 
+    const ccDetails = useMemo(() => {
+        let totalOwed = 0;
+        let spentThisMonth = 0;
+        let paidThisMonth = 0;
+
+        accounts.filter(a => a.type === 'CREDIT_CARD').forEach(acc => {
+            totalOwed += acc.balance;
+        });
+
+        expenses.forEach(e => {
+            const acc = accounts.find(a => a.id === e.accountId);
+            const toAcc = accounts.find(a => a.id === e.toAccountId);
+
+            const isCurrentMonth = isSameMonth(parseISO(e.date), new Date()) && isSameYear(parseISO(e.date), new Date());
+
+            if (isCurrentMonth) {
+                if (acc && acc.type === 'CREDIT_CARD' && (e.type === 'DEBIT' || !e.type)) {
+                    spentThisMonth += e.amount;
+                }
+                if (toAcc && toAcc.type === 'CREDIT_CARD' && e.type === 'TRANSFER') {
+                    paidThisMonth += e.amount;
+                }
+            }
+        });
+
+        const pastOwed = totalOwed - spentThisMonth + paidThisMonth;
+
+        return {
+            spentThisMonth,
+            pastOwed: pastOwed > 0 ? pastOwed : 0,
+        };
+    }, [accounts, expenses]);
+
+    const loanDetails = useMemo(() => {
+        let totalOwed = 0;
+        let spentThisMonth = 0;
+        let paidThisMonth = 0;
+
+        accounts.filter(a => a.type === 'LOAN').forEach(acc => {
+            totalOwed += acc.balance;
+        });
+
+        expenses.forEach(e => {
+            const acc = accounts.find(a => a.id === e.accountId);
+            const toAcc = accounts.find(a => a.id === e.toAccountId);
+
+            const isCurrentMonth = isSameMonth(parseISO(e.date), new Date()) && isSameYear(parseISO(e.date), new Date());
+
+            if (isCurrentMonth) {
+                if (acc && acc.type === 'LOAN' && (e.type === 'DEBIT' || !e.type)) {
+                    spentThisMonth += e.amount;
+                }
+                if (toAcc && toAcc.type === 'LOAN' && e.type === 'TRANSFER') {
+                    paidThisMonth += e.amount;
+                }
+            }
+        });
+
+        const pastOwed = totalOwed - spentThisMonth + paidThisMonth;
+
+        return {
+            spentThisMonth,
+            pastOwed: pastOwed > 0 ? pastOwed : 0,
+        };
+    }, [accounts, expenses]);
+
     // Expenses by Category
     const expensesByCategory = expenses.reduce((acc, e) => {
         acc[e.category] = (acc[e.category] || 0) + e.amount;
@@ -123,7 +190,7 @@ const Dashboard = () => {
     const expensePieData = Object.entries(expensesByCategory).map(([name, value]) => ({ name, value }));
     const PIE_COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
 
-    const handleMetricClick = (type: 'CREDIT' | 'DEBIT' | 'TODAY' | 'MONTHLY') => {
+    const handleMetricClick = (type: 'CREDIT' | 'DEBIT' | 'TODAY' | 'MONTHLY' | 'CC' | 'LOAN') => {
         let filtered: Expense[] = [];
         let title = '';
 
@@ -144,6 +211,20 @@ const Dashboard = () => {
                 filtered = expenses.filter(e => (e.type === 'DEBIT' || !e.type) && isSameMonth(parseISO(e.date), new Date()) && isSameYear(parseISO(e.date), new Date()));
                 title = `Monthly Expenses - ${format(new Date(), 'MMMM yyyy')}`;
                 break;
+            case 'CC':
+                filtered = expenses.filter(e => {
+                    const acc = accounts.find(a => a.id === e.accountId);
+                    return acc && acc.type === 'CREDIT_CARD' && (e.type === 'DEBIT' || !e.type) && isSameMonth(parseISO(e.date), new Date()) && isSameYear(parseISO(e.date), new Date());
+                });
+                title = `Credit Card Usage - ${format(new Date(), 'MMMM yyyy')}`;
+                break;
+            case 'LOAN':
+                filtered = expenses.filter(e => {
+                    const acc = accounts.find(a => a.id === e.accountId);
+                    return acc && acc.type === 'LOAN' && (e.type === 'DEBIT' || !e.type) && isSameMonth(parseISO(e.date), new Date()) && isSameYear(parseISO(e.date), new Date());
+                });
+                title = `Loan Usage - ${format(new Date(), 'MMMM yyyy')}`;
+                break;
         }
 
         setDetailData({ title, data: filtered });
@@ -160,6 +241,25 @@ const Dashboard = () => {
             return matchesSearch && matchesCategory;
         });
     }, [detailData.data, searchQuery, filterCategory]);
+
+    const searchSummary = useMemo(() => {
+        if (!searchQuery) return null;
+        
+        let totalSpent = 0;
+        let totalIncome = 0;
+        const catBreakdown: Record<string, number> = {};
+
+        filteredModalData.forEach(e => {
+            if (e.type === 'DEBIT' || !e.type) {
+                totalSpent += e.amount;
+                catBreakdown[e.category] = (catBreakdown[e.category] || 0) + e.amount;
+            } else if (e.type === 'CREDIT') {
+                totalIncome += e.amount;
+            }
+        });
+
+        return { totalSpent, totalIncome, catBreakdown };
+    }, [searchQuery, filteredModalData]);
 
     const modalCategories = useMemo(() => {
         const cats = new Set(detailData.data.map(item => item.category));
@@ -337,7 +437,7 @@ const Dashboard = () => {
 
                     {/* --- FINANCE TAB --- */}
                     <TabPanel px={0}>
-                        <SimpleGrid columns={{ base: 1, md: 4 }} spacing={6} mb={8}>
+                        <SimpleGrid columns={{ base: 1, md: 3 }} spacing={6} mb={8}>
                             <Card
                                 borderTop="4px"
                                 borderColor="green.400"
@@ -396,6 +496,54 @@ const Dashboard = () => {
                                         <StatLabel>Monthly Expenses</StatLabel>
                                         <StatNumber color="purple.500">₹{monthlySpent.toLocaleString()}</StatNumber>
                                         <StatHelpText>{format(new Date(), 'MMMM yyyy')}</StatHelpText>
+                                    </Stat>
+                                </CardBody>
+                            </Card>
+                            <Card
+                                borderTop="4px"
+                                borderColor="cyan.400"
+                                cursor="pointer"
+                                onClick={() => handleMetricClick('CC')}
+                                _hover={{ shadow: 'lg', transform: 'translateY(-2px)' }}
+                                transition="all 0.2s"
+                            >
+                                <CardBody>
+                                    <Stat>
+                                        <StatLabel>CC Usage This Month</StatLabel>
+                                        <StatNumber color="cyan.600">₹{ccDetails.spentThisMonth.toLocaleString()}</StatNumber>
+                                        <StatHelpText>
+                                            {ccDetails.pastOwed > 0 ? (
+                                                <Text as="span" color="red.500" fontWeight="bold">
+                                                    Overdue: ₹{ccDetails.pastOwed.toLocaleString()}
+                                                </Text>
+                                            ) : (
+                                                <Text as="span">All clear for past months!</Text>
+                                            )}
+                                        </StatHelpText>
+                                    </Stat>
+                                </CardBody>
+                            </Card>
+                            <Card
+                                borderTop="4px"
+                                borderColor="pink.400"
+                                cursor="pointer"
+                                onClick={() => handleMetricClick('LOAN')}
+                                _hover={{ shadow: 'lg', transform: 'translateY(-2px)' }}
+                                transition="all 0.2s"
+                            >
+                                <CardBody>
+                                    <Stat>
+                                        <StatLabel>Loan Usage This Month</StatLabel>
+                                        <StatNumber color="pink.600">₹{loanDetails.spentThisMonth.toLocaleString()}</StatNumber>
+                                        <StatHelpText>
+                                            {loanDetails.pastOwed > 0 ? (
+                                                <Text as="span" color="red.500" fontWeight="bold">
+                                                    Overdue: ₹{loanDetails.pastOwed.toLocaleString()}
+                                                </Text>
+                                            ) : (
+                                                <Text as="span">All clear for past months!</Text>
+                                            )}
+                                        </StatHelpText>
                                     </Stat>
                                 </CardBody>
                             </Card>
@@ -525,6 +673,40 @@ const Dashboard = () => {
                                 ))}
                             </Select>
                         </HStack>
+
+                        {searchSummary && (
+                            <Box mb={6} p={4} bg="gray.50" _dark={{ bg: 'gray.700' }} borderRadius="md" borderWidth="1px" borderColor="blue.200">
+                                <HStack justifyContent="space-between" alignItems="flex-start" wrap="wrap" spacing={4}>
+                                    <VStack align="start" spacing={1} minW="150px">
+                                        <Text fontSize="sm" fontWeight="bold" color="gray.500" textTransform="uppercase">
+                                            Search Results Total
+                                        </Text>
+                                        <Heading size="lg" color="red.500">₹{searchSummary.totalSpent.toLocaleString()}</Heading>
+                                        {searchSummary.totalIncome > 0 && (
+                                            <Text fontSize="sm" color="green.500" fontWeight="bold">
+                                                + Income: ₹{searchSummary.totalIncome.toLocaleString()}
+                                            </Text>
+                                        )}
+                                    </VStack>
+                                    
+                                    <Box flex={1} minW="250px">
+                                        <Text fontSize="sm" fontWeight="bold" color="gray.500" textTransform="uppercase" mb={2}>
+                                            Category Breakdown
+                                        </Text>
+                                        <SimpleGrid columns={{ base: 1, sm: 2 }} spacingX={6} spacingY={2}>
+                                            {Object.entries(searchSummary.catBreakdown)
+                                                .sort((a, b) => b[1] - a[1]) // sort by amount descending
+                                                .map(([cat, amount]) => (
+                                                <HStack key={cat} justifyContent="space-between" borderBottomWidth="1px" borderBottomColor="gray.200" _dark={{ borderBottomColor: 'gray.600' }} pb={1}>
+                                                    <Text fontSize="sm" color="gray.600" _dark={{ color: 'gray.300' }}>{cat}</Text>
+                                                    <Text fontSize="sm" fontWeight="bold">₹{amount.toLocaleString()}</Text>
+                                                </HStack>
+                                            ))}
+                                        </SimpleGrid>
+                                    </Box>
+                                </HStack>
+                            </Box>
+                        )}
 
                         <Table variant="simple" size="sm">
                             <Thead>

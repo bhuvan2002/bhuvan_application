@@ -1,8 +1,10 @@
 import {
+    Box,
     Button,
     FormControl,
     FormLabel,
     Input,
+    Select,
     Modal,
     ModalOverlay,
     ModalContent,
@@ -19,17 +21,22 @@ import { v4 as uuidv4 } from 'uuid';
 import { useData } from '../context/DataContext';
 import type { Account } from '../types';
 
-const AddAccountForm = () => {
+const AddAccountForm = ({ children }: { children?: React.ReactNode }) => {
     const { isOpen, onOpen, onClose } = useDisclosure();
     const { addAccount } = useData();
     const toast = useToast();
-    const { register, handleSubmit, reset } = useForm<Account>();
+    const { register, handleSubmit, reset, watch } = useForm<Account>({
+        defaultValues: { type: 'BANK' }
+    });
+    const accountType = watch('type');
 
     const onSubmit = (data: any) => {
         const newAccount: Account = {
             ...data,
             id: uuidv4(),
             balance: Number(data.balance),
+            creditLimit: data.creditLimit ? Number(data.creditLimit) : null,
+            dueDate: data.dueDate ? Number(data.dueDate) : null,
         };
         addAccount(newAccount);
         toast({
@@ -43,7 +50,13 @@ const AddAccountForm = () => {
 
     return (
         <>
-            <Button colorScheme="blue" onClick={onOpen}>Add New Account</Button>
+            {children ? (
+                <Box onClick={onOpen} display="inline-block" width="full">
+                    {children}
+                </Box>
+            ) : (
+                <Button colorScheme="blue" onClick={onOpen}>Add New Account</Button>
+            )}
 
             <Modal isOpen={isOpen} onClose={onClose}>
                 <ModalOverlay />
@@ -53,7 +66,15 @@ const AddAccountForm = () => {
                     <ModalBody>
                         <VStack as="form" spacing={4} id="add-account-form" onSubmit={handleSubmit(onSubmit)}>
                             <FormControl isRequired>
-                                <FormLabel>Account Name</FormLabel>
+                                <FormLabel>Account Type</FormLabel>
+                                <Select {...register('type', { required: true })}>
+                                    <option value="BANK">Bank Account</option>
+                                    <option value="CREDIT_CARD">Credit Card</option>
+                                    <option value="LOAN">Loan</option>
+                                </Select>
+                            </FormControl>
+                            <FormControl isRequired>
+                                <FormLabel>{accountType === 'LOAN' ? 'Loan Name' : 'Account Name'}</FormLabel>
                                 <Input placeholder="e.g. Chase Checking" {...register('name', { required: true })} />
                             </FormControl>
                             <FormControl isRequired>
@@ -76,8 +97,37 @@ const AddAccountForm = () => {
                                 <FormLabel>ATM Pin / Key (Optional)</FormLabel>
                                 <Input placeholder="ATM secret" {...register('atmKey')} />
                             </FormControl>
+                            
+                            {accountType === 'CREDIT_CARD' && (
+                                <>
+                                    <FormControl isRequired>
+                                        <FormLabel>Credit Limit</FormLabel>
+                                        <Input type="number" {...register('creditLimit', { required: true })} />
+                                    </FormControl>
+                                    <FormControl isRequired>
+                                        <FormLabel>Due Date (Day of Month)</FormLabel>
+                                        <Input type="number" min={1} max={31} {...register('dueDate', { required: true })} />
+                                    </FormControl>
+                                </>
+                            )}
+
+                            {accountType === 'LOAN' && (
+                                <>
+                                    <FormControl isRequired>
+                                        <FormLabel>EMI Due Date (Day of Month)</FormLabel>
+                                        <Input type="number" min={1} max={31} {...register('dueDate', { required: true })} />
+                                    </FormControl>
+                                    <FormControl isRequired>
+                                        <FormLabel>Loan End Date</FormLabel>
+                                        <Input type="date" {...register('loanEndDate', { required: true })} />
+                                    </FormControl>
+                                </>
+                            )}
+
                             <FormControl isRequired>
-                                <FormLabel>Current Balance</FormLabel>
+                                <FormLabel>
+                                    {accountType === 'BANK' ? 'Current Balance' : 'Amount Owed / Outstanding Balance'}
+                                </FormLabel>
                                 <Input type="number" step="0.01" {...register('balance', { required: true })} />
                             </FormControl>
                         </VStack>
