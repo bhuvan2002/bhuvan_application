@@ -1,4 +1,4 @@
-import { Box, Heading, SimpleGrid, Stat, StatLabel, StatNumber, StatHelpText, StatArrow, VStack, Divider, useToast } from '@chakra-ui/react';
+import { Box, Heading, SimpleGrid, Stat, StatLabel, StatNumber, StatHelpText, StatArrow, VStack, Divider } from '@chakra-ui/react';
 import { motion } from 'framer-motion';
 import AIInsightCard from './AIInsightCard';
 import type { AIAnalysisResponse } from '../../services/aiService';
