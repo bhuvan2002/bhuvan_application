@@ -23,6 +23,7 @@ interface DataContextType {
     toggleTodo: (id: string) => void;
     deleteTodo: (id: string) => void;
     updateTodo: (todo: Todo) => void;
+    isGlobalLoading: boolean;
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
@@ -33,12 +34,16 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
     const [accounts, setAccounts] = useState<Account[]>([]);
     const [expenses, setExpenses] = useState<Expense[]>([]);
     const [todos, setTodos] = useState<Todo[]>([]);
+    const [isGlobalLoading, setIsGlobalLoading] = useState(true);
+    const [initialFetchDone, setInitialFetchDone] = useState(false);
 
     const logout = () => {
         setTrades([]);
         setAccounts([]);
         setExpenses([]);
         setTodos([]);
+        setInitialFetchDone(false);
+        setIsGlobalLoading(false); // don't load when logged out
     };
 
     const fetchTrades = async () => {
@@ -82,8 +87,23 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
     };
 
     useEffect(() => {
-        if (!token) logout();
-    }, [token]);
+        if (!token) {
+            logout();
+        } else if (!initialFetchDone) {
+            const loadAllData = async () => {
+                setIsGlobalLoading(true);
+                await Promise.all([
+                    fetchTrades(),
+                    fetchAccounts(),
+                    fetchExpenses(),
+                    fetchTodos()
+                ]);
+                setInitialFetchDone(true);
+                setIsGlobalLoading(false);
+            };
+            loadAllData();
+        }
+    }, [token, initialFetchDone]);
 
     const addTrade = async (trade: Trade) => {
         try {
@@ -221,7 +241,8 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
             fetchTrades, fetchAccounts, fetchExpenses, fetchTodos,
             addTrade, deleteTrade,
             addAccount, updateAccount, deleteAccount, addExpense, addBulkExpenses,
-            addTodo, toggleTodo, deleteTodo, updateTodo
+            addTodo, toggleTodo, deleteTodo, updateTodo,
+            isGlobalLoading
         }}>
             {children}
         </DataContext.Provider>

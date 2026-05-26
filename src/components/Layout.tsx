@@ -18,6 +18,8 @@ import {
 import { Link as RouterLink, Outlet, useLocation } from 'react-router-dom';
 import { HamburgerIcon, CloseIcon, MoonIcon, SunIcon } from '@chakra-ui/icons';
 import { useAuth } from '../context/AuthContext';
+import { useData } from '../context/DataContext';
+import GlobalLoader from './GlobalLoader';
 
 const Links = [
     { name: 'Dashboard', path: '/', roles: ['TRADER'] },
@@ -68,9 +70,14 @@ export default function Layout() {
     const { isOpen, onOpen, onClose } = useDisclosure();
     const { colorMode, toggleColorMode } = useColorMode();
     const { user, logout } = useAuth();
+    const { isGlobalLoading } = useData();
     const location = useLocation();
 
     const filteredLinks = Links.filter(link => user && link.roles.includes(user.role));
+
+    if (isGlobalLoading) {
+        return <GlobalLoader />;
+    }
 
     return (
         <>
