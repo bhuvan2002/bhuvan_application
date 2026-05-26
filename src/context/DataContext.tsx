@@ -18,6 +18,7 @@ interface DataContextType {
     updateAccount: (account: Account) => void;
     deleteAccount: (id: string) => void;
     addExpense: (expense: Expense) => void;
+    addBulkExpenses: (expenses: Partial<Expense>[]) => Promise<void>;
     addTodo: (todo: Todo) => void;
     toggleTodo: (id: string) => void;
     deleteTodo: (id: string) => void;
@@ -154,6 +155,20 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
         }
     };
 
+    const addBulkExpenses = async (expensesData: Partial<Expense>[]) => {
+        try {
+            const res = await apiService.post('/expenses/bulk', { expenses: expensesData });
+            if (res.status === 200 || res.status === 201) {
+                // Refresh expenses and accounts entirely since bulk adds many
+                await fetchExpenses();
+                await fetchAccounts();
+            }
+        } catch (error) {
+            console.error('Failed to add bulk expenses:', error);
+            throw error; // Rethrow to let the UI handle the error state
+        }
+    };
+
     const addTodo = async (todo: Todo) => {
         try {
             const res = await apiService.post('/todos', todo);
@@ -205,7 +220,7 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
             trades, accounts, expenses, todos,
             fetchTrades, fetchAccounts, fetchExpenses, fetchTodos,
             addTrade, deleteTrade,
-            addAccount, updateAccount, deleteAccount, addExpense,
+            addAccount, updateAccount, deleteAccount, addExpense, addBulkExpenses,
             addTodo, toggleTodo, deleteTodo, updateTodo
         }}>
             {children}

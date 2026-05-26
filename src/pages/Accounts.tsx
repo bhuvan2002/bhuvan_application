@@ -4,6 +4,7 @@ import AccountList from '../components/AccountList';
 import ExpenseList from '../components/ExpenseList';
 import AddAccountForm from '../components/AddAccountForm';
 import AddExpenseForm from '../components/AddExpenseForm';
+import BulkExpenseForm from '../components/BulkExpenseForm';
 import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
 
@@ -25,6 +26,7 @@ const Accounts = () => {
                     <HStack>
                         <AddAccountForm />
                         <AddExpenseForm />
+                        <BulkExpenseForm />
                     </HStack>
                 )}
             </HStack>
