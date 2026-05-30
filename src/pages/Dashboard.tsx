@@ -4,6 +4,7 @@ import {
     Heading,
     Text,
     Card,
+    Button,
     CardBody,
     Stack,
     Tabs,
@@ -71,6 +72,14 @@ const Dashboard = () => {
     const [detailData, setDetailData] = useState<{ title: string; data: Expense[] }>({ title: '', data: [] });
     const [searchQuery, setSearchQuery] = useState('');
     const [filterCategory, setFilterCategory] = useState('');
+    const [startDate, setStartDate] = useState('');
+    const [endDate, setEndDate] = useState('');
+    const [currentPage, setCurrentPage] = useState(1);
+    const ITEMS_PER_PAGE = 10;
+
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [searchQuery, filterCategory, startDate, endDate, detailData.title]);
 
     useEffect(() => {
         fetchTrades();
@@ -104,16 +113,16 @@ const Dashboard = () => {
 
     // --- Finance Metrics ---
     const totalBalance = accounts.reduce((acc, a) => acc + a.balance, 0);
-    const totalCredit = expenses.filter(e => e.type === 'CREDIT').reduce((acc, e) => acc + e.amount, 0);
-    const totalDebit = expenses.filter(e => e.type === 'DEBIT' || !e.type).reduce((acc, e) => acc + e.amount, 0);
+    const totalCredit = expenses.filter(e => e.type === 'CREDIT').reduce((acc, e) => acc + Number(e.amount), 0);
+    const totalDebit = expenses.filter(e => e.type !== 'CREDIT').reduce((acc, e) => acc + Number(e.amount), 0);
 
     const todaySpent = expenses
-        .filter(e => (e.type === 'DEBIT' || !e.type) && isToday(parseISO(e.date)))
-        .reduce((acc, e) => acc + e.amount, 0);
+        .filter(e => e.type !== 'CREDIT' && isToday(parseISO(e.date)))
+        .reduce((acc, e) => acc + Number(e.amount), 0);
 
     const monthlySpent = expenses
-        .filter(e => (e.type === 'DEBIT' || !e.type) && isSameMonth(parseISO(e.date), new Date()) && isSameYear(parseISO(e.date), new Date()))
-        .reduce((acc, e) => acc + e.amount, 0);
+        .filter(e => e.type !== 'CREDIT' && isSameMonth(parseISO(e.date), new Date()) && isSameYear(parseISO(e.date), new Date()))
+        .reduce((acc, e) => acc + Number(e.amount), 0);
 
     const ccDetails = useMemo(() => {
         let totalOwed = 0;
@@ -200,28 +209,28 @@ const Dashboard = () => {
                 title = 'Credit / Income Details';
                 break;
             case 'DEBIT':
-                filtered = expenses.filter(e => e.type === 'DEBIT' || !e.type);
+                filtered = expenses.filter(e => e.type !== 'CREDIT');
                 title = 'Debit / Expense Details';
                 break;
             case 'TODAY':
-                filtered = expenses.filter(e => (e.type === 'DEBIT' || !e.type) && isToday(parseISO(e.date)));
+                filtered = expenses.filter(e => e.type !== 'CREDIT' && isToday(parseISO(e.date)));
                 title = "Today's Spent Details";
                 break;
             case 'MONTHLY':
-                filtered = expenses.filter(e => (e.type === 'DEBIT' || !e.type) && isSameMonth(parseISO(e.date), new Date()) && isSameYear(parseISO(e.date), new Date()));
+                filtered = expenses.filter(e => e.type !== 'CREDIT' && isSameMonth(parseISO(e.date), new Date()) && isSameYear(parseISO(e.date), new Date()));
                 title = `Monthly Expenses - ${format(new Date(), 'MMMM yyyy')}`;
                 break;
             case 'CC':
                 filtered = expenses.filter(e => {
                     const acc = accounts.find(a => a.id === e.accountId);
-                    return acc && acc.type === 'CREDIT_CARD' && (e.type === 'DEBIT' || !e.type) && isSameMonth(parseISO(e.date), new Date()) && isSameYear(parseISO(e.date), new Date());
+                    return acc && acc.type === 'CREDIT_CARD' && e.type !== 'CREDIT' && isSameMonth(parseISO(e.date), new Date()) && isSameYear(parseISO(e.date), new Date());
                 });
                 title = `Credit Card Usage - ${format(new Date(), 'MMMM yyyy')}`;
                 break;
             case 'LOAN':
                 filtered = expenses.filter(e => {
                     const acc = accounts.find(a => a.id === e.accountId);
-                    return acc && acc.type === 'LOAN' && (e.type === 'DEBIT' || !e.type) && isSameMonth(parseISO(e.date), new Date()) && isSameYear(parseISO(e.date), new Date());
+                    return acc && acc.type === 'LOAN' && e.type !== 'CREDIT' && isSameMonth(parseISO(e.date), new Date()) && isSameYear(parseISO(e.date), new Date());
                 });
                 title = `Loan Usage - ${format(new Date(), 'MMMM yyyy')}`;
                 break;
@@ -230,36 +239,59 @@ const Dashboard = () => {
         setDetailData({ title, data: filtered });
         setSearchQuery('');
         setFilterCategory('');
+        setStartDate('');
+        setEndDate('');
         onOpen();
     };
 
     const filteredModalData = useMemo(() => {
         return detailData.data.filter(item => {
-            const matchesSearch = item.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                item.category.toLowerCase().includes(searchQuery.toLowerCase());
+            // Split search query by commas to allow multi-tag searching
+            const searchTerms = searchQuery.toLowerCase().split(',').map(s => s.trim()).filter(Boolean);
+            
+            const matchesSearch = searchTerms.length === 0 || searchTerms.every(term => 
+                (item.description && item.description.toLowerCase().includes(term)) || 
+                (item.category && item.category.toLowerCase().includes(term))
+            );
+
             const matchesCategory = filterCategory === '' || item.category === filterCategory;
-            return matchesSearch && matchesCategory;
+            
+            let matchesDate = true;
+            if (startDate || endDate) {
+                const itemDateStr = format(new Date(item.date), 'yyyy-MM-dd');
+                if (startDate && itemDateStr < startDate) matchesDate = false;
+                if (endDate && itemDateStr > endDate) matchesDate = false;
+            }
+
+            return matchesSearch && matchesCategory && matchesDate;
         });
-    }, [detailData.data, searchQuery, filterCategory]);
+    }, [detailData.data, searchQuery, filterCategory, startDate, endDate]);
+
+    const totalPages = Math.ceil(filteredModalData.length / ITEMS_PER_PAGE);
+    const paginatedData = useMemo(() => {
+        const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+        return [...filteredModalData]
+            .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+            .slice(startIndex, startIndex + ITEMS_PER_PAGE);
+    }, [filteredModalData, currentPage]);
 
     const searchSummary = useMemo(() => {
-        if (!searchQuery) return null;
-        
         let totalSpent = 0;
         let totalIncome = 0;
         const catBreakdown: Record<string, number> = {};
 
         filteredModalData.forEach(e => {
-            if (e.type === 'DEBIT' || !e.type) {
-                totalSpent += e.amount;
-                catBreakdown[e.category] = (catBreakdown[e.category] || 0) + e.amount;
-            } else if (e.type === 'CREDIT') {
-                totalIncome += e.amount;
+            const amount = Number(e.amount) || 0;
+            if (e.type === 'CREDIT') {
+                totalIncome += amount;
+            } else {
+                totalSpent += amount;
+                catBreakdown[e.category] = (catBreakdown[e.category] || 0) + amount;
             }
         });
 
         return { totalSpent, totalIncome, catBreakdown };
-    }, [searchQuery, filteredModalData]);
+    }, [filteredModalData]);
 
     const modalCategories = useMemo(() => {
         const cats = new Set(detailData.data.map(item => item.category));
@@ -651,28 +683,41 @@ const Dashboard = () => {
                     <ModalHeader borderBottomWidth="1px">{detailData.title}</ModalHeader>
                     <ModalCloseButton />
                     <ModalBody py={6}>
-                        <HStack mb={4} spacing={4}>
-                            <InputGroup flex={2}>
-                                <InputLeftElement pointerEvents="none">
-                                    <SearchIcon color="gray.300" />
-                                </InputLeftElement>
-                                <Input
-                                    placeholder="Search by description or category..."
-                                    value={searchQuery}
-                                    onChange={(e) => setSearchQuery(e.target.value)}
-                                />
-                            </InputGroup>
-                            <Select
-                                flex={1}
-                                placeholder="All Categories"
-                                value={filterCategory}
-                                onChange={(e) => setFilterCategory(e.target.value)}
-                            >
-                                {modalCategories.map(cat => (
-                                    <option key={cat} value={cat}>{cat}</option>
-                                ))}
-                            </Select>
-                        </HStack>
+                        <VStack mb={4} spacing={4} align="stretch">
+                            <HStack spacing={4}>
+                                <InputGroup flex={2}>
+                                    <InputLeftElement pointerEvents="none">
+                                        <SearchIcon color="gray.300" />
+                                    </InputLeftElement>
+                                    <Input
+                                        placeholder="Search by description or category..."
+                                        value={searchQuery}
+                                        onChange={(e) => setSearchQuery(e.target.value)}
+                                    />
+                                </InputGroup>
+                                <Select
+                                    flex={1}
+                                    placeholder="All Categories"
+                                    value={filterCategory}
+                                    onChange={(e) => setFilterCategory(e.target.value)}
+                                >
+                                    {modalCategories.map(cat => (
+                                        <option key={cat} value={cat}>{cat}</option>
+                                    ))}
+                                </Select>
+                            </HStack>
+                            <HStack spacing={4} align="center" bg="gray.50" _dark={{ bg: 'gray.800' }} p={2} borderRadius="md" borderWidth="1px">
+                                <Text fontSize="sm" fontWeight="bold">Date Range:</Text>
+                                <Input type="date" size="sm" width="auto" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+                                <Text fontSize="sm">to</Text>
+                                <Input type="date" size="sm" width="auto" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+                                {(startDate || endDate) && (
+                                    <Button size="sm" variant="ghost" colorScheme="red" onClick={() => { setStartDate(''); setEndDate(''); }}>
+                                        Clear Dates
+                                    </Button>
+                                )}
+                            </HStack>
+                        </VStack>
 
                         {searchSummary && (
                             <Box mb={6} p={4} bg="gray.50" _dark={{ bg: 'gray.700' }} borderRadius="md" borderWidth="1px" borderColor="blue.200">
@@ -718,18 +763,27 @@ const Dashboard = () => {
                                 </Tr>
                             </Thead>
                             <Tbody>
-                                {filteredModalData.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map(e => (
+                                {paginatedData.map(e => (
                                     <Tr key={e.id}>
                                         <Td>{format(parseISO(e.date), 'MMM dd, yyyy')}</Td>
                                         <Td>{e.description}</Td>
                                         <Td><Badge>{e.category}</Badge></Td>
                                         <Td isNumeric fontWeight="bold" color={e.type === 'CREDIT' ? 'green.500' : 'red.500'}>
-                                            {e.type === 'CREDIT' ? '+' : '-'}₹{e.amount.toLocaleString()}
+                                            {e.type === 'CREDIT' ? '+' : '-'}₹{Number(e.amount).toLocaleString()}
                                         </Td>
                                     </Tr>
                                 ))}
                             </Tbody>
                         </Table>
+                        
+                        {totalPages > 1 && (
+                            <HStack justifyContent="center" mt={6} spacing={4}>
+                                <Button size="sm" onClick={() => setCurrentPage(p => Math.max(1, p - 1))} isDisabled={currentPage === 1}>Previous</Button>
+                                <Text fontSize="sm" fontWeight="medium">Page {currentPage} of {totalPages}</Text>
+                                <Button size="sm" onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} isDisabled={currentPage === totalPages}>Next</Button>
+                            </HStack>
+                        )}
+
                         {filteredModalData.length === 0 && (
                             <Text textAlign="center" py={10} color="gray.500">
                                 {detailData.data.length === 0 ? 'No transactions found for this period.' : 'No results matching your filters.'}

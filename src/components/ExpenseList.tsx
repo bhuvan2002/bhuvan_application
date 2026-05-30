@@ -5,6 +5,7 @@ import {
     Tr,
     Th,
     Td,
+    Tfoot,
     TableContainer,
     Box,
     Badge,
@@ -14,17 +15,50 @@ import {
     Button,
 } from '@chakra-ui/react';
 import { useData } from '../context/DataContext';
-import { format, isSameDay, parseISO } from 'date-fns';
+import { format } from 'date-fns';
 import { useState, useMemo } from 'react';
 
 const ExpenseList = () => {
     const { expenses, accounts } = useData();
     const [filterDate, setFilterDate] = useState<string>('');
+    const [searchQuery, setSearchQuery] = useState('');
 
     const filteredExpenses = useMemo(() => {
-        if (!filterDate) return expenses;
-        return expenses.filter(e => isSameDay(parseISO(e.date), parseISO(filterDate)));
-    }, [expenses, filterDate]);
+        return expenses.filter(e => {
+            // Date Filter
+            let matchesDate = true;
+            if (filterDate) {
+                const expenseDateLocal = format(new Date(e.date), 'yyyy-MM-dd');
+                matchesDate = expenseDateLocal === filterDate;
+            }
+
+            // Search Filter
+            let matchesSearch = true;
+            if (searchQuery) {
+                const searchTerms = searchQuery.toLowerCase().split(',').map(s => s.trim()).filter(Boolean);
+                matchesSearch = searchTerms.length === 0 || searchTerms.every(term => 
+                    (e.description && e.description.toLowerCase().includes(term)) || 
+                    (e.category && e.category.toLowerCase().includes(term))
+                );
+            }
+
+            return matchesDate && matchesSearch;
+        });
+    }, [expenses, filterDate, searchQuery]);
+
+    const totals = useMemo(() => {
+        let spent = 0;
+        let earned = 0;
+        filteredExpenses.forEach(e => {
+            const amount = Number(e.amount) || 0;
+            if (e.type === 'CREDIT') {
+                earned += amount;
+            } else {
+                spent += amount;
+            }
+        });
+        return { spent, earned };
+    }, [filteredExpenses]);
 
     if (expenses.length === 0) {
         return (
@@ -41,8 +75,8 @@ const ExpenseList = () => {
 
     return (
         <Box>
-            <HStack mb={4} spacing={4} bg="white" _dark={{ bg: 'gray.800' }} p={4} borderRadius="lg" shadow="sm" borderWidth="1px">
-                <Text fontWeight="bold" fontSize="sm" whiteSpace="nowrap">Filter by Date:</Text>
+            <HStack mb={4} spacing={4} bg="white" _dark={{ bg: 'gray.800' }} p={4} borderRadius="lg" shadow="sm" borderWidth="1px" flexWrap="wrap">
+                <Text fontWeight="bold" fontSize="sm" whiteSpace="nowrap">Filters:</Text>
                 <Input
                     type="date"
                     size="sm"
@@ -52,9 +86,17 @@ const ExpenseList = () => {
                     max={new Date().toISOString().split('T')[0]}
                     width="auto"
                 />
-                {filterDate && (
-                    <Button size="sm" variant="ghost" colorScheme="red" onClick={() => setFilterDate('')}>
-                        Reset
+                <Input
+                    placeholder="Search by tags (e.g. chennai, food)"
+                    size="sm"
+                    borderRadius="md"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    maxW="300px"
+                />
+                {(filterDate || searchQuery) && (
+                    <Button size="sm" variant="ghost" colorScheme="red" onClick={() => { setFilterDate(''); setSearchQuery(''); }}>
+                        Clear All
                     </Button>
                 )}
             </HStack>
@@ -104,13 +146,25 @@ const ExpenseList = () => {
                                             fontWeight="bold"
                                             color={isCredit ? 'green.500' : 'red.500'}
                                         >
-                                            {isCredit ? '+' : '-'}₹{expense.amount.toLocaleString()}
+                                            {isCredit ? '+' : '-'}₹{Number(expense.amount).toLocaleString()}
                                         </Text>
                                     </Td>
                                 </Tr>
                             );
                         })}
                     </Tbody>
+                    {filteredExpenses.length > 0 && (
+                        <Tfoot bg="gray.50" _dark={{ bg: 'gray.700' }}>
+                            <Tr>
+                                <Th colSpan={4} fontSize="sm" py={3} textAlign="right" textTransform="none">Total Income:</Th>
+                                <Th isNumeric fontSize="sm" py={3} color="green.500">+₹{totals.earned.toLocaleString()}</Th>
+                            </Tr>
+                            <Tr>
+                                <Th colSpan={4} fontSize="sm" py={3} textAlign="right" textTransform="none">Total Spent:</Th>
+                                <Th isNumeric fontSize="sm" py={3} color="red.500">-₹{totals.spent.toLocaleString()}</Th>
+                            </Tr>
+                        </Tfoot>
+                    )}
                 </Table>
                 {filteredExpenses.length === 0 && (
                     <Box p={8} textAlign="center" color="gray.500">
