@@ -111,8 +111,7 @@ const Dashboard = () => {
         };
     });
 
-    // --- Finance Metrics ---
-    const totalBalance = accounts.reduce((acc, a) => acc + a.balance, 0);
+    const totalBalance = accounts.filter(a => a.type !== 'CREDIT_CARD').reduce((acc, a) => acc + a.balance, 0);
     const totalCredit = expenses.filter(e => e.type === 'CREDIT').reduce((acc, e) => acc + Number(e.amount), 0);
     const totalDebit = expenses.filter(e => e.type !== 'CREDIT').reduce((acc, e) => acc + Number(e.amount), 0);
 
@@ -190,14 +189,21 @@ const Dashboard = () => {
         };
     }, [accounts, expenses]);
 
-    // Expenses by Category
-    const expensesByCategory = expenses.reduce((acc, e) => {
-        acc[e.category] = (acc[e.category] || 0) + e.amount;
+    // Expenses & Income by Category
+    const expensesByCategory = expenses.filter(e => e.type !== 'CREDIT').reduce((acc, e) => {
+        acc[e.category] = (acc[e.category] || 0) + Number(e.amount);
+        return acc;
+    }, {} as Record<string, number>);
+
+    const incomeByCategory = expenses.filter(e => e.type === 'CREDIT').reduce((acc, e) => {
+        acc[e.category] = (acc[e.category] || 0) + Number(e.amount);
         return acc;
     }, {} as Record<string, number>);
 
     const expensePieData = Object.entries(expensesByCategory).map(([name, value]) => ({ name, value }));
+    const incomePieData = Object.entries(incomeByCategory).map(([name, value]) => ({ name, value }));
     const PIE_COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
+    const INCOME_COLORS = ['#38A169', '#319795', '#4299E1', '#805AD5', '#D53F8C'];
 
     const handleMetricClick = (type: 'CREDIT' | 'DEBIT' | 'TODAY' | 'MONTHLY' | 'CC' | 'LOAN') => {
         let filtered: Expense[] = [];
@@ -359,14 +365,17 @@ const Dashboard = () => {
                                     <Box height="300px">
                                         <ResponsiveContainer width="100%" height="100%">
                                             <BarChart data={[
-                                                { name: 'Income/P&L', amount: totalPnL }, // Simplified
+                                                { name: 'Income', amount: totalCredit },
                                                 { name: 'Expenses', amount: totalDebit }
                                             ]}>
                                                 <CartesianGrid strokeDasharray="3 3" />
                                                 <XAxis dataKey="name" />
                                                 <YAxis />
-                                                <Tooltip />
-                                                <Bar dataKey="amount" fill="#8884d8" />
+                                                <Tooltip formatter={(value: any) => `₹${Number(value).toLocaleString()}`} />
+                                                <Bar dataKey="amount">
+                                                    <Cell fill="#38A169" />
+                                                    <Cell fill="#E53E3E" />
+                                                </Bar>
                                             </BarChart>
                                         </ResponsiveContainer>
                                     </Box>
@@ -581,7 +590,7 @@ const Dashboard = () => {
                             </Card>
                         </SimpleGrid>
 
-                        <SimpleGrid columns={{ base: 1, lg: 2 }} spacing={8}>
+                        <SimpleGrid columns={{ base: 1, lg: 3 }} spacing={8}>
                             <Card minH="400px">
                                 <CardBody>
                                     <Heading size="md" mb={4}>Expenses by Category</Heading>
@@ -600,7 +609,33 @@ const Dashboard = () => {
                                                         <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
                                                     ))}
                                                 </Pie>
-                                                <Tooltip />
+                                                <Tooltip formatter={(value: any) => `₹${Number(value).toLocaleString()}`} />
+                                                <Legend />
+                                            </PieChart>
+                                        </ResponsiveContainer>
+                                    </Box>
+                                </CardBody>
+                            </Card>
+
+                            <Card minH="400px">
+                                <CardBody>
+                                    <Heading size="md" mb={4}>Income by Category</Heading>
+                                    <Box height="300px">
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <PieChart>
+                                                <Pie
+                                                    data={incomePieData}
+                                                    cx="50%"
+                                                    cy="50%"
+                                                    outerRadius={100}
+                                                    fill="#38A169"
+                                                    dataKey="value"
+                                                >
+                                                    {incomePieData.map((_entry, index) => (
+                                                        <Cell key={`cell-${index}`} fill={INCOME_COLORS[index % INCOME_COLORS.length]} />
+                                                    ))}
+                                                </Pie>
+                                                <Tooltip formatter={(value: any) => `₹${Number(value).toLocaleString()}`} />
                                                 <Legend />
                                             </PieChart>
                                         </ResponsiveContainer>

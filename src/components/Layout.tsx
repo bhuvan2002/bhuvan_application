@@ -27,6 +27,7 @@ const Links = [
     { name: 'Accounts', path: '/accounts', roles: ['TRADER', 'PARENT'] },
     { name: 'To-Do', path: '/todo', roles: ['TRADER'] },
     { name: 'Planner', path: '/planner', roles: ['TRADER'] },
+    { name: 'Notes', path: '/notes', roles: ['TRADER'] },
 ];
 
 const NavLink = ({ children, to, isActive }: { children: React.ReactNode; to: string; isActive: boolean }) => (

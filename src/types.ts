@@ -51,3 +51,21 @@ export interface Todo {
     priority: 'HIGH' | 'MEDIUM' | 'LOW';
     dueDate: string;
 }
+
+export interface Plan {
+    id: string;
+    title: string;
+    type: string;
+    startTime: string;
+    endTime: string;
+    notes: string;
+    date: string;
+}
+
+export interface Note {
+    id: string;
+    title: string;
+    content: string;
+    createdAt?: string;
+    updatedAt?: string;
+}

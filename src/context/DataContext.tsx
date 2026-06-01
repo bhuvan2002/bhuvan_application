@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
-import type { Trade, Account, Expense, Todo } from '../types';
+import type { Trade, Account, Expense, Todo, Note } from '../types';
 import { useAuth } from './AuthContext';
 import apiService from '../services/apiService';
 
@@ -8,10 +8,12 @@ interface DataContextType {
     accounts: Account[];
     expenses: Expense[];
     todos: Todo[];
+    notes: Note[];
     fetchTrades: () => Promise<void>;
     fetchAccounts: () => Promise<void>;
     fetchExpenses: () => Promise<void>;
     fetchTodos: () => Promise<void>;
+    fetchNotes: () => Promise<void>;
     addTrade: (trade: Trade) => void;
     deleteTrade: (id: string) => void;
     addAccount: (account: Account) => void;
@@ -23,6 +25,9 @@ interface DataContextType {
     toggleTodo: (id: string) => void;
     deleteTodo: (id: string) => void;
     updateTodo: (todo: Todo) => void;
+    addNote: (note: Omit<Note, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
+    updateNote: (note: Note) => Promise<void>;
+    deleteNote: (id: string) => Promise<void>;
     isGlobalLoading: boolean;
 }
 
@@ -34,6 +39,7 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
     const [accounts, setAccounts] = useState<Account[]>([]);
     const [expenses, setExpenses] = useState<Expense[]>([]);
     const [todos, setTodos] = useState<Todo[]>([]);
+    const [notes, setNotes] = useState<Note[]>([]);
     const [isGlobalLoading, setIsGlobalLoading] = useState(true);
     const [initialFetchDone, setInitialFetchDone] = useState(false);
 
@@ -42,6 +48,7 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
         setAccounts([]);
         setExpenses([]);
         setTodos([]);
+        setNotes([]);
         setInitialFetchDone(false);
         setIsGlobalLoading(false); // don't load when logged out
     };
@@ -86,6 +93,16 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
         }
     };
 
+    const fetchNotes = async () => {
+        if (!token) return;
+        try {
+            const res = await apiService.get('/notes');
+            setNotes(res.data);
+        } catch (error) {
+            console.error('Failed to fetch notes:', error);
+        }
+    };
+
     useEffect(() => {
         if (!token) {
             logout();
@@ -96,7 +113,8 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
                     fetchTrades(),
                     fetchAccounts(),
                     fetchExpenses(),
-                    fetchTodos()
+                    fetchTodos(),
+                    fetchNotes()
                 ]);
                 setInitialFetchDone(true);
                 setIsGlobalLoading(false);
@@ -235,13 +253,47 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
         }
     };
 
+    const addNote = async (note: Omit<Note, 'id' | 'createdAt' | 'updatedAt'>) => {
+        try {
+            const res = await apiService.post('/notes', note);
+            if (res.status === 200 || res.status === 201) {
+                setNotes(prev => [res.data, ...prev]);
+            }
+        } catch (error) {
+            console.error('Failed to add note:', error);
+        }
+    };
+
+    const updateNote = async (updated: Note) => {
+        try {
+            const res = await apiService.put(`/notes/${updated.id}`, updated);
+            if (res.status === 200) {
+                setNotes(prev => prev.map(n => n.id === updated.id ? res.data : n));
+            }
+        } catch (error) {
+            console.error('Failed to update note:', error);
+        }
+    };
+
+    const deleteNote = async (id: string) => {
+        try {
+            const res = await apiService.delete(`/notes/${id}`);
+            if (res.status === 200 || res.status === 204) {
+                setNotes(prev => prev.filter(n => n.id !== id));
+            }
+        } catch (error) {
+            console.error('Failed to delete note:', error);
+        }
+    };
+
     return (
         <DataContext.Provider value={{
-            trades, accounts, expenses, todos,
-            fetchTrades, fetchAccounts, fetchExpenses, fetchTodos,
+            trades, accounts, expenses, todos, notes,
+            fetchTrades, fetchAccounts, fetchExpenses, fetchTodos, fetchNotes,
             addTrade, deleteTrade,
             addAccount, updateAccount, deleteAccount, addExpense, addBulkExpenses,
             addTodo, toggleTodo, deleteTodo, updateTodo,
+            addNote, updateNote, deleteNote,
             isGlobalLoading
         }}>
             {children}

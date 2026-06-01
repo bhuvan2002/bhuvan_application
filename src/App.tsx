@@ -7,6 +7,7 @@ import TradingJournal from './pages/TradingJournal';
 import Accounts from './pages/Accounts';
 import TodoList from './pages/TodoList';
 import Planner from './pages/Planner';
+import Notes from './pages/Notes';
 // import { useAuth } from './context/AuthContext';
 
 function App() {
@@ -26,6 +27,11 @@ function App() {
         {/* Planner: Trader Only */}
         <Route element={<ProtectedRoute allowedRoles={['TRADER']} />}>
           <Route path="/planner" element={<Planner />} />
+        </Route>
+
+        {/* Notes: Trader Only */}
+        <Route element={<ProtectedRoute allowedRoles={['TRADER']} />}>
+          <Route path="/notes" element={<Notes />} />
         </Route>
 
         {/* Shared Routes: Trader & Parent */}
