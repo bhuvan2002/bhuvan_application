@@ -25,14 +25,39 @@ import { useForm } from 'react-hook-form';
 import { v4 as uuidv4 } from 'uuid';
 import { useData } from '../context/DataContext';
 import type { Trade } from '../types';
+import { useEffect } from 'react';
 
 const TradeForm = () => {
     const { isOpen, onOpen, onClose } = useDisclosure();
     const { addTrade } = useData();
     const toast = useToast();
-    const { register, handleSubmit, watch, reset } = useForm<Trade>();
+    const { register, handleSubmit, watch, reset, setValue } = useForm<Trade>();
 
+    const type = watch('type');
+    const entryPrice = watch('entryPrice');
+    const exitPrice = watch('exitPrice');
+    const lotSize = watch('lotSize');
     const pnlValue = watch('pnl');
+
+    useEffect(() => {
+        if (entryPrice && exitPrice && lotSize) {
+            const entry = Number(entryPrice);
+            const exit = Number(exitPrice);
+            const qty = Number(lotSize);
+            const currentType = type || 'BUY';
+            let calculatedPnl = 0;
+
+            if (currentType === 'BUY') {
+                calculatedPnl = (exit - entry) * qty;
+            } else if (currentType === 'SELL') {
+                calculatedPnl = (entry - exit) * qty;
+            }
+
+            if (!isNaN(calculatedPnl)) {
+                setValue('pnl', Number(calculatedPnl.toFixed(2)));
+            }
+        }
+    }, [type, entryPrice, exitPrice, lotSize, setValue]);
 
     const onSubmit = (data: any) => {
         const newTrade: Trade = {
@@ -147,9 +172,9 @@ const TradeForm = () => {
                                                 {...register('pnl', { required: true })}
                                                 borderRadius="md"
                                             />
-                                            <Text fontSize="xs" color="gray.500" textAlign="center" mt={2} fontWeight="medium">
-                                                Enter your actual P&L from the trade
-                                            </Text>
+                                                <Text fontSize="xs" color="gray.500" textAlign="center" mt={2} fontWeight="medium">
+                                                    Auto-calculated based on Entry/Exit
+                                                </Text>
                                         </FormControl>
                                     </CardBody>
                                 </Card>

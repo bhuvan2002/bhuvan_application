@@ -26,7 +26,7 @@ import {
     CardBody,
     CardFooter,
 } from '@chakra-ui/react';
-import { AddIcon, DeleteIcon, EditIcon } from '@chakra-ui/icons';
+import { AddIcon, DeleteIcon } from '@chakra-ui/icons';
 import { useData } from '../context/DataContext';
 import { format } from 'date-fns';
 
