@@ -164,13 +164,13 @@ const AddExpenseForm = () => {
 
                             <FormControl isRequired>
                                 <FormLabel fontSize="sm">
-                                    {transactionType === 'DEBIT' ? 'Paid From' : transactionType === 'TRANSFER' ? 'Pay From' : 'Bank Name'}
+                                    {transactionType === 'DEBIT' ? 'Paid From' : transactionType === 'TRANSFER' ? 'Transfer From' : 'Bank Name'}
                                 </FormLabel>
                                 <Select
                                     borderRadius="md"
                                     {...register('accountId', { required: true })}
                                 >
-                                    {accounts.filter(a => transactionType !== 'TRANSFER' || a.type === 'BANK' || !a.type).map(acc => (
+                                    {accounts.map(acc => (
                                         <option key={acc.id} value={acc.id}>
                                             {acc.name} {acc.type === 'CREDIT_CARD' || acc.type === 'LOAN' ? `(Owed: ₹${acc.balance.toLocaleString()})` : `(₹${acc.balance.toLocaleString()})`}
                                         </option>
@@ -181,7 +181,7 @@ const AddExpenseForm = () => {
                             {transactionType === 'TRANSFER' && (
                                 <FormControl isRequired>
                                     <HStack justifyContent="space-between" mb={2}>
-                                        <FormLabel fontSize="sm" mb={0}>Pay To (Credit Card / Loan)</FormLabel>
+                                        <FormLabel fontSize="sm" mb={0}>Transfer To</FormLabel>
                                         <AddAccountForm>
                                             <Button size="xs" variant="link" colorScheme="blue">
                                                 + Add New
@@ -192,9 +192,9 @@ const AddExpenseForm = () => {
                                         borderRadius="md"
                                         {...register('toAccountId', { required: true })}
                                     >
-                                        {accounts.filter(a => a.type === 'CREDIT_CARD' || a.type === 'LOAN').map(acc => (
+                                        {accounts.map(acc => (
                                             <option key={acc.id} value={acc.id}>
-                                                {acc.name} (Owed: ₹{acc.balance.toLocaleString()})
+                                                {acc.name} {acc.type === 'CREDIT_CARD' || acc.type === 'LOAN' ? `(Owed: ₹${acc.balance.toLocaleString()})` : `(₹${acc.balance.toLocaleString()})`}
                                             </option>
                                         ))}
                                     </Select>

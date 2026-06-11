@@ -121,15 +121,16 @@ const ExpenseList = () => {
                     <Tbody>
                         {filteredExpenses.map((expense) => {
                             const isCredit = expense.type === 'CREDIT';
+                            const isTransfer = expense.type === 'TRANSFER';
                             return (
                                 <Tr key={expense.id} _hover={{ bg: 'gray.50', _dark: { bg: 'gray.700' } }} transition="background 0.2s">
                                     <Td fontSize="sm">{format(new Date(expense.date), 'MMM dd, yyyy')}</Td>
                                     <Td fontSize="sm" fontWeight="medium">
-                                        {expense.description || (isCredit ? 'Credit Transaction' : 'Debit Transaction')}
+                                        {expense.description || (isCredit ? 'Credit Transaction' : isTransfer ? 'Transfer' : 'Debit Transaction')}
                                     </Td>
                                     <Td>
                                         <Badge
-                                            colorScheme={isCredit ? 'green' : 'blue'}
+                                            colorScheme={isCredit ? 'green' : isTransfer ? 'purple' : 'blue'}
                                             variant="subtle"
                                             px={2}
                                             borderRadius="full"
@@ -140,13 +141,14 @@ const ExpenseList = () => {
                                     </Td>
                                     <Td fontSize="sm" color="gray.600" _dark={{ color: 'gray.400' }}>
                                         {getAccountName(expense.accountId)}
+                                        {isTransfer && expense.toAccountId && ` → ${getAccountName(expense.toAccountId)}`}
                                     </Td>
                                     <Td isNumeric>
                                         <Text
                                             fontWeight="bold"
-                                            color={isCredit ? 'green.500' : 'red.500'}
+                                            color={isCredit ? 'green.500' : isTransfer ? 'purple.500' : 'red.500'}
                                         >
-                                            {isCredit ? '+' : '-'}₹{Number(expense.amount).toLocaleString()}
+                                            {isCredit ? '+' : isTransfer ? '⇄ ' : '-'}₹{Number(expense.amount).toLocaleString()}
                                         </Text>
                                     </Td>
                                 </Tr>

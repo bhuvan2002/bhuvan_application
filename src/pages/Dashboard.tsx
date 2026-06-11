@@ -113,14 +113,14 @@ const Dashboard = () => {
 
     const totalBalance = accounts.filter(a => a.type !== 'CREDIT_CARD').reduce((acc, a) => acc + a.balance, 0);
     const totalCredit = expenses.filter(e => e.type === 'CREDIT').reduce((acc, e) => acc + Number(e.amount), 0);
-    const totalDebit = expenses.filter(e => e.type !== 'CREDIT').reduce((acc, e) => acc + Number(e.amount), 0);
+    const totalDebit = expenses.filter(e => e.type === 'DEBIT').reduce((acc, e) => acc + Number(e.amount), 0);
 
     const todaySpent = expenses
-        .filter(e => e.type !== 'CREDIT' && isToday(parseISO(e.date)))
+        .filter(e => e.type === 'DEBIT' && isToday(parseISO(e.date)))
         .reduce((acc, e) => acc + Number(e.amount), 0);
 
     const monthlySpent = expenses
-        .filter(e => e.type !== 'CREDIT' && isSameMonth(parseISO(e.date), new Date()) && isSameYear(parseISO(e.date), new Date()))
+        .filter(e => e.type === 'DEBIT' && isSameMonth(parseISO(e.date), new Date()) && isSameYear(parseISO(e.date), new Date()))
         .reduce((acc, e) => acc + Number(e.amount), 0);
 
     const ccDetails = useMemo(() => {
@@ -190,7 +190,7 @@ const Dashboard = () => {
     }, [accounts, expenses]);
 
     // Expenses & Income by Category
-    const expensesByCategory = expenses.filter(e => e.type !== 'CREDIT').reduce((acc, e) => {
+    const expensesByCategory = expenses.filter(e => e.type === 'DEBIT').reduce((acc, e) => {
         acc[e.category] = (acc[e.category] || 0) + Number(e.amount);
         return acc;
     }, {} as Record<string, number>);
@@ -215,28 +215,28 @@ const Dashboard = () => {
                 title = 'Credit / Income Details';
                 break;
             case 'DEBIT':
-                filtered = expenses.filter(e => e.type !== 'CREDIT');
+                filtered = expenses.filter(e => e.type === 'DEBIT');
                 title = 'Debit / Expense Details';
                 break;
             case 'TODAY':
-                filtered = expenses.filter(e => e.type !== 'CREDIT' && isToday(parseISO(e.date)));
+                filtered = expenses.filter(e => e.type === 'DEBIT' && isToday(parseISO(e.date)));
                 title = "Today's Spent Details";
                 break;
             case 'MONTHLY':
-                filtered = expenses.filter(e => e.type !== 'CREDIT' && isSameMonth(parseISO(e.date), new Date()) && isSameYear(parseISO(e.date), new Date()));
+                filtered = expenses.filter(e => e.type === 'DEBIT' && isSameMonth(parseISO(e.date), new Date()) && isSameYear(parseISO(e.date), new Date()));
                 title = `Monthly Expenses - ${format(new Date(), 'MMMM yyyy')}`;
                 break;
             case 'CC':
                 filtered = expenses.filter(e => {
                     const acc = accounts.find(a => a.id === e.accountId);
-                    return acc && acc.type === 'CREDIT_CARD' && e.type !== 'CREDIT' && isSameMonth(parseISO(e.date), new Date()) && isSameYear(parseISO(e.date), new Date());
+                    return acc && acc.type === 'CREDIT_CARD' && e.type === 'DEBIT' && isSameMonth(parseISO(e.date), new Date()) && isSameYear(parseISO(e.date), new Date());
                 });
                 title = `Credit Card Usage - ${format(new Date(), 'MMMM yyyy')}`;
                 break;
             case 'LOAN':
                 filtered = expenses.filter(e => {
                     const acc = accounts.find(a => a.id === e.accountId);
-                    return acc && acc.type === 'LOAN' && e.type !== 'CREDIT' && isSameMonth(parseISO(e.date), new Date()) && isSameYear(parseISO(e.date), new Date());
+                    return acc && acc.type === 'LOAN' && e.type === 'DEBIT' && isSameMonth(parseISO(e.date), new Date()) && isSameYear(parseISO(e.date), new Date());
                 });
                 title = `Loan Usage - ${format(new Date(), 'MMMM yyyy')}`;
                 break;
