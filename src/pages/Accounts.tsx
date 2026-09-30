@@ -1,7 +1,6 @@
 import { Heading, Box, HStack, VStack, useToast, Tabs, TabList, TabPanels, Tab, TabPanel, Text, Button } from '@chakra-ui/react';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { useData } from '../context/DataContext';
 import AIAnalyzeButton from '../components/ai/AIAnalyzeButton';
 import LoadingInsights from '../components/ai/LoadingInsights';
 import AIInsightsPanel from '../components/ai/AIInsightsPanel';
