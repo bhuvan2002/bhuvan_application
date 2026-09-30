@@ -5,11 +5,11 @@ import AIAnalyzeButton from '../components/ai/AIAnalyzeButton';
 import LoadingInsights from '../components/ai/LoadingInsights';
 import AIInsightsPanel from '../components/ai/AIInsightsPanel';
 import { aiService, type AIAnalysisResponse } from '../services/aiService';
+import AddAccountForm from '../components/AddAccountForm';
+import AccountList from '../components/AccountList';
 
 const Accounts = () => {
     const { user } = useAuth();
-    // Assuming context is updated; for now, we'll just show the skeleton structure
-    // If context isn't updated yet, it'll fetch the old ones but UI will be split
     const isTrader = user?.role === 'TRADER';
     const toast = useToast();
 
@@ -58,24 +58,36 @@ const Accounts = () => {
                         <Box p={4} borderWidth={1} borderRadius="md" shadow="sm">
                             <Heading size="md" mb={4}>My Bank Accounts</Heading>
                             <Text color="gray.500" mb={4}>Manage your bank balances, income, and expenses here.</Text>
-                            {/* Placeholder for BankAccountList */}
-                            {isTrader && <Button colorScheme="blue" size="sm">Add Bank Account</Button>}
+                            <AccountList type="BANK" />
+                            {isTrader && (
+                                <AddAccountForm initialType="BANK">
+                                    <Button colorScheme="blue" size="sm">Add Bank Account</Button>
+                                </AddAccountForm>
+                            )}
                         </Box>
                     </TabPanel>
                     <TabPanel>
                         <Box p={4} borderWidth={1} borderRadius="md" shadow="sm">
                             <Heading size="md" mb={4}>My Credit Cards</Heading>
                             <Text color="gray.500" mb={4}>Track credit card spending and bill payments.</Text>
-                            {/* Placeholder for CreditCardList */}
-                            {isTrader && <Button colorScheme="teal" size="sm">Add Credit Card</Button>}
+                            <AccountList type="CREDIT_CARD" />
+                            {isTrader && (
+                                <AddAccountForm initialType="CREDIT_CARD">
+                                    <Button colorScheme="teal" size="sm">Add Credit Card</Button>
+                                </AddAccountForm>
+                            )}
                         </Box>
                     </TabPanel>
                     <TabPanel>
                         <Box p={4} borderWidth={1} borderRadius="md" shadow="sm">
                             <Heading size="md" mb={4}>My Loans</Heading>
                             <Text color="gray.500" mb={4}>Manage EMI schedules and loan payments.</Text>
-                            {/* Placeholder for LoanList */}
-                            {isTrader && <Button colorScheme="purple" size="sm">Add Loan</Button>}
+                            <AccountList type="LOAN" />
+                            {isTrader && (
+                                <AddAccountForm initialType="LOAN">
+                                    <Button colorScheme="purple" size="sm">Add Loan</Button>
+                                </AddAccountForm>
+                            )}
                         </Box>
                     </TabPanel>
                 </TabPanels>

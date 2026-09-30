@@ -21,31 +21,43 @@ import { v4 as uuidv4 } from 'uuid';
 import { useData } from '../context/DataContext';
 import type { Account } from '../types';
 
-const AddAccountForm = ({ children }: { children?: React.ReactNode }) => {
+const AddAccountForm = ({ children, initialType = 'BANK' }: { children?: React.ReactNode, initialType?: string }) => {
     const { isOpen, onOpen, onClose } = useDisclosure();
     const { addAccount } = useData();
     const toast = useToast();
     const { register, handleSubmit, reset, watch } = useForm<Account>({
-        defaultValues: { type: 'BANK' }
+        defaultValues: { type: initialType }
     });
     const accountType = watch('type');
 
-    const onSubmit = (data: any) => {
+    const onSubmit = async (data: any) => {
         const newAccount: Account = {
             ...data,
             id: uuidv4(),
+            bankName: data.bankName || '',
+            accountNumber: data.accountNumber || '',
             balance: Number(data.balance),
             creditLimit: data.creditLimit ? Number(data.creditLimit) : null,
             dueDate: data.dueDate ? Number(data.dueDate) : null,
+            emiAmount: data.emiAmount ? Number(data.emiAmount) : undefined,
         };
-        addAccount(newAccount);
-        toast({
-            title: 'Account created.',
-            status: 'success',
-            duration: 2000,
-        });
-        reset();
-        onClose();
+        try {
+            await addAccount(newAccount);
+            toast({
+                title: 'Account created.',
+                status: 'success',
+                duration: 2000,
+            });
+            reset();
+            onClose();
+        } catch (error: any) {
+            toast({
+                title: 'Failed to create account.',
+                description: error.message || 'Unknown error',
+                status: 'error',
+                duration: 4000,
+            });
+        }
     };
 
     return (
@@ -77,26 +89,30 @@ const AddAccountForm = ({ children }: { children?: React.ReactNode }) => {
                                 <FormLabel>{accountType === 'LOAN' ? 'Loan Name' : 'Account Name'}</FormLabel>
                                 <Input placeholder="e.g. Chase Checking" {...register('name', { required: true })} />
                             </FormControl>
-                            <FormControl isRequired>
-                                <FormLabel>Bank Name</FormLabel>
-                                <Input placeholder="e.g. Chase" {...register('bankName', { required: true })} />
-                            </FormControl>
-                            <FormControl isRequired>
-                                <FormLabel>Account Number</FormLabel>
-                                <Input placeholder="Full account number" {...register('accountNumber', { required: true })} />
-                            </FormControl>
-                            <FormControl>
-                                <FormLabel>IFSC Code</FormLabel>
-                                <Input placeholder="e.g. SBIN0001234" {...register('ifsc')} />
-                            </FormControl>
-                            <FormControl>
-                                <FormLabel>Mobile App Key (Optional)</FormLabel>
-                                <Input placeholder="App login key" {...register('mobileAppKey')} />
-                            </FormControl>
-                            <FormControl>
-                                <FormLabel>ATM Pin / Key (Optional)</FormLabel>
-                                <Input placeholder="ATM secret" {...register('atmKey')} />
-                            </FormControl>
+                            {accountType !== 'LOAN' && (
+                                <>
+                                    <FormControl isRequired>
+                                        <FormLabel>Bank Name</FormLabel>
+                                        <Input placeholder="e.g. Chase" {...register('bankName', { required: true })} />
+                                    </FormControl>
+                                    <FormControl isRequired>
+                                        <FormLabel>Account Number</FormLabel>
+                                        <Input placeholder="Full account number" {...register('accountNumber', { required: true })} />
+                                    </FormControl>
+                                    <FormControl>
+                                        <FormLabel>IFSC Code</FormLabel>
+                                        <Input placeholder="e.g. SBIN0001234" {...register('ifsc')} />
+                                    </FormControl>
+                                    <FormControl>
+                                        <FormLabel>Mobile App Key (Optional)</FormLabel>
+                                        <Input placeholder="App login key" {...register('mobileAppKey')} />
+                                    </FormControl>
+                                    <FormControl>
+                                        <FormLabel>ATM Pin / Key (Optional)</FormLabel>
+                                        <Input placeholder="ATM secret" {...register('atmKey')} />
+                                    </FormControl>
+                                </>
+                            )}
                             
                             {accountType === 'CREDIT_CARD' && (
                                 <>
@@ -113,6 +129,10 @@ const AddAccountForm = ({ children }: { children?: React.ReactNode }) => {
 
                             {accountType === 'LOAN' && (
                                 <>
+                                    <FormControl isRequired>
+                                        <FormLabel>Monthly EMI Amount (Amount Deducted)</FormLabel>
+                                        <Input type="number" step="0.01" {...register('emiAmount', { required: true })} />
+                                    </FormControl>
                                     <FormControl isRequired>
                                         <FormLabel>EMI Due Date (Day of Month)</FormLabel>
                                         <Input type="number" min={1} max={31} {...register('dueDate', { required: true })} />

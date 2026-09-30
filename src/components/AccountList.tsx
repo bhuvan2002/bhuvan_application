@@ -42,7 +42,7 @@ import { useState, useMemo } from 'react';
 import type { Account } from '../types';
 import { format, parseISO } from 'date-fns';
 
-const AccountList = () => {
+const AccountList = ({ type }: { type?: 'BANK' | 'CREDIT_CARD' | 'LOAN' }) => {
     const { accounts, deleteAccount, expenses } = useData();
     const { isOpen: isInfoOpen, onOpen: onInfoOpen, onClose: onInfoClose } = useDisclosure();
     const { isOpen: isTransOpen, onOpen: onTransOpen, onClose: onTransClose } = useDisclosure();
@@ -82,7 +82,13 @@ const AccountList = () => {
         return Array.from(cats);
     }, [accountTransactions]);
 
-    if (accounts.length === 0) {
+    const bankAccounts = accounts.filter(a => a.type === 'BANK' || !a.type);
+    const creditCards = accounts.filter(a => a.type === 'CREDIT_CARD');
+    const loans = accounts.filter(a => a.type === 'LOAN');
+
+    const filteredAccounts = type === 'BANK' ? bankAccounts : type === 'CREDIT_CARD' ? creditCards : type === 'LOAN' ? loans : accounts;
+
+    if (filteredAccounts.length === 0) {
         return (
             <Box p={4} textAlign="center" color="gray.500">
                 No accounts added yet.
@@ -172,6 +178,11 @@ const AccountList = () => {
                                             Limit: ₹{account.creditLimit.toLocaleString()} (Avail: ₹{(account.creditLimit - account.balance).toLocaleString()})
                                         </Text>
                                     )}
+                                    {account.type === 'LOAN' && account.emiAmount !== undefined && (
+                                        <Text fontSize="xs" color="gray.500">
+                                            EMI: ₹{account.emiAmount.toLocaleString()} / month
+                                        </Text>
+                                    )}
                                 </Stat>
                                 <HStack mt={2} justifyContent="space-between">
                                     <Badge colorScheme="green">Active</Badge>
@@ -188,15 +199,11 @@ const AccountList = () => {
         );
     };
 
-    const bankAccounts = accounts.filter(a => a.type === 'BANK' || !a.type);
-    const creditCards = accounts.filter(a => a.type === 'CREDIT_CARD');
-    const loans = accounts.filter(a => a.type === 'LOAN');
-
     return (
         <Box>
-            {renderAccountCards(bankAccounts, 'Bank Accounts', 'blue')}
-            {renderAccountCards(creditCards, 'Credit Cards', 'orange')}
-            {renderAccountCards(loans, 'Loans', 'purple')}
+            {(!type || type === 'BANK') && renderAccountCards(bankAccounts, 'Bank Accounts', 'blue')}
+            {(!type || type === 'CREDIT_CARD') && renderAccountCards(creditCards, 'Credit Cards', 'orange')}
+            {(!type || type === 'LOAN') && renderAccountCards(loans, 'Loans', 'purple')}
 
             {/* Account Info Modal */}
             <Modal isOpen={isInfoOpen} onClose={onInfoClose} isCentered>

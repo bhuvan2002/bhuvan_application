@@ -16,7 +16,7 @@ interface DataContextType {
     fetchNotes: () => Promise<void>;
     addTrade: (trade: Trade) => void;
     deleteTrade: (id: string) => void;
-    addAccount: (account: Account) => void;
+    addAccount: (account: Account) => Promise<void>;
     updateAccount: (account: Account) => void;
     deleteAccount: (id: string) => void;
     addExpense: (expense: Expense) => void;
@@ -150,9 +150,12 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
             const res = await apiService.post('/accounts', account);
             if (res.status === 200 || res.status === 201) {
                 setAccounts(prev => [...prev, res.data]);
+            } else {
+                throw new Error('Unexpected status: ' + res.status);
             }
         } catch (error) {
             console.error('Failed to add account:', error);
+            throw error;
         }
     };
 

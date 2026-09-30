@@ -18,6 +18,7 @@ export interface Account {
     creditLimit?: number | null;
     dueDate?: number | null;
     loanEndDate?: string | null;
+    emiAmount?: number;
 }
 
 export interface Expense {
