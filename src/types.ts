@@ -69,3 +69,68 @@ export interface Note {
     createdAt?: string;
     updatedAt?: string;
 }
+
+export interface BankAccount {
+    id: string;
+    bankName: string;
+    accountName: string;
+    accountNumber?: string;
+    accountType: string;
+    balance: number;
+    transactions?: BankTransaction[];
+}
+
+export interface BankTransaction {
+    id: string;
+    date: string;
+    amount: number;
+    type: 'CREDIT' | 'DEBIT';
+    category: string;
+    description: string;
+    bankAccountId: string;
+    creditCardPaymentId?: string;
+    loanEmiPaymentId?: string;
+}
+
+export interface CreditCard {
+    id: string;
+    cardName: string;
+    provider: string;
+    last4Digits?: string;
+    creditLimit: number;
+    outstanding: number;
+    billingCycle?: number;
+    dueDate?: number;
+    expenses?: CreditCardExpense[];
+}
+
+export interface CreditCardExpense {
+    id: string;
+    date: string;
+    amount: number;
+    category: string;
+    description: string;
+    creditCardId: string;
+}
+
+export interface Loan {
+    id: string;
+    loanName: string;
+    provider: string;
+    totalAmount: number;
+    emiAmount: number;
+    startDate: string;
+    tenureMonths: number;
+    emis?: LoanEMI[];
+}
+
+export interface LoanEMI {
+    id: string;
+    emiNumber: number;
+    dueDate: string;
+    amount: number;
+    status: 'UPCOMING' | 'PAID';
+    paymentDate?: string;
+    loanId: string;
+    bankAccountId?: string;
+}
