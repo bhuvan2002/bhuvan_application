@@ -89,7 +89,7 @@ export default function Notes() {
     };
 
     return (
-        <Box maxW="1200px" mx="auto" p={4}>
+        <Box w="full" mx="auto" p={4}>
             <HStack justify="space-between" mb={8}>
                 <VStack align="start" spacing={1}>
                     <Heading size="lg" color="purple.600">My Notes</Heading>
@@ -101,17 +101,19 @@ export default function Notes() {
             </HStack>
 
             {notes.length === 0 ? (
-                <Box textAlign="center" py={10} px={6} bg="white" _dark={{ bg: 'gray.800' }} borderRadius="xl" shadow="sm">
-                    <Heading as="h2" size="xl" mt={6} mb={2}>
-                        No notes yet
-                    </Heading>
-                    <Text color={'gray.500'} mb={6}>
-                        Create your first note to start storing important information.
-                    </Text>
-                    <Button colorScheme="purple" variant="solid" onClick={() => handleOpen()}>
-                        Create Note
-                    </Button>
-                </Box>
+                <Card>
+                    <CardBody textAlign="center" py={10} px={6}>
+                        <Heading as="h2" size="xl" mt={6} mb={2}>
+                            No notes yet
+                        </Heading>
+                        <Text color={'gray.500'} mb={6}>
+                            Create your first note to start storing important information.
+                        </Text>
+                        <Button colorScheme="purple" variant="solid" onClick={() => handleOpen()}>
+                            Create Note
+                        </Button>
+                    </CardBody>
+                </Card>
             ) : (
                 <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacing={6}>
                     {notes.map(note => (
@@ -121,9 +123,6 @@ export default function Notes() {
                             cursor="pointer" 
                             _hover={{ transform: 'translateY(-2px)', shadow: 'md', borderColor: 'purple.300' }}
                             transition="all 0.2s"
-                            borderWidth="1px"
-                            borderColor="gray.200"
-                            _dark={{ borderColor: 'gray.700' }}
                         >
                             <CardHeader pb={2}>
                                 <HStack justify="space-between">

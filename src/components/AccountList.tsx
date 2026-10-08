@@ -38,9 +38,14 @@ import {
 import { DeleteIcon, InfoIcon, EditIcon, ViewIcon, SearchIcon } from '@chakra-ui/icons';
 import { useData } from '../context/DataContext';
 import EditAccountForm from './EditAccountForm';
+import PayEmiForm from './PayEmiForm';
+import ForecloseLoanForm from './ForecloseLoanForm';
+import PayCCBillForm from './PayCCBillForm';
 import { useState, useMemo } from 'react';
 import type { Account } from '../types';
 import { format, parseISO } from 'date-fns';
+import { getLoanDetails } from '../utils/loanUtils';
+import { getCreditCardCycleDetails, getExpenseCycleLabel } from '../utils/creditCardUtils';
 
 const AccountList = ({ type }: { type?: 'BANK' | 'CREDIT_CARD' | 'LOAN' }) => {
     const { accounts, deleteAccount, expenses } = useData();
@@ -85,6 +90,15 @@ const AccountList = ({ type }: { type?: 'BANK' | 'CREDIT_CARD' | 'LOAN' }) => {
     const bankAccounts = accounts.filter(a => a.type === 'BANK' || !a.type);
     const creditCards = accounts.filter(a => a.type === 'CREDIT_CARD');
     const loans = accounts.filter(a => a.type === 'LOAN');
+
+    const isLoanCleared = (loan: Account) => {
+        const details = getLoanDetails(loan, expenses);
+        if (details && details.remainingBalance <= 0) return true;
+        return false;
+    };
+
+    const activeLoans = loans.filter(l => !isLoanCleared(l));
+    const clearedLoans = loans.filter(l => isLoanCleared(l));
 
     const filteredAccounts = type === 'BANK' ? bankAccounts : type === 'CREDIT_CARD' ? creditCards : type === 'LOAN' ? loans : accounts;
 
@@ -166,31 +180,104 @@ const AccountList = ({ type }: { type?: 'BANK' | 'CREDIT_CARD' | 'LOAN' }) => {
                             <CardBody>
                                 <Stat>
                                     <StatLabel>
-                                        {account.type === 'CREDIT_CARD' || account.type === 'LOAN'
-                                            ? 'Amount Owed / Outstanding'
-                                            : 'Available Balance'}
+                                        {account.type === 'CREDIT_CARD'
+                                            ? 'Outstanding Balance'
+                                            : account.type === 'LOAN'
+                                                ? 'Original Amount Borrowed'
+                                                : 'Available Balance'}
                                     </StatLabel>
-                                    <StatNumber color={account.type === 'CREDIT_CARD' || account.type === 'LOAN' ? 'red.500' : 'inherit'}>
+                                    <StatNumber color={account.type === 'CREDIT_CARD' ? 'red.500' : 'inherit'}>
                                         ₹{account.balance.toLocaleString()}
                                     </StatNumber>
-                                    {account.type === 'CREDIT_CARD' && account.creditLimit && (
-                                        <Text fontSize="xs" color="gray.500">
-                                            Limit: ₹{account.creditLimit.toLocaleString()} (Avail: ₹{(account.creditLimit - account.balance).toLocaleString()})
-                                        </Text>
+                                    {account.type === 'CREDIT_CARD' && (
+                                        <Box mt={2} p={2} bg="gray.50" _dark={{ bg: 'gray.700' }} borderRadius="md" borderWidth="1px">
+                                            {(() => {
+                                                const ccDetails = getCreditCardCycleDetails(account, expenses);
+                                                if (!ccDetails) return null;
+                                                return (
+                                                    <>
+                                                        <HStack justify="space-between" mb={1}>
+                                                            <Text fontSize="xs" color="gray.500">Billing Cycle:</Text>
+                                                            <Text fontSize="xs" fontWeight="bold">
+                                                                {format(ccDetails.currentCycleStart, 'dd MMM')} → {format(ccDetails.currentCycleEnd, 'dd MMM')}
+                                                            </Text>
+                                                        </HStack>
+                                                        <HStack justify="space-between" mb={1}>
+                                                            <Text fontSize="xs" color="gray.500">Current Spent:</Text>
+                                                            <Text fontSize="xs" fontWeight="bold">
+                                                                ₹{account.balance.toLocaleString()}
+                                                            </Text>
+                                                        </HStack>
+                                                        <HStack justify="space-between" mb={1}>
+                                                            <Text fontSize="xs" color="gray.500">Prev Statement:</Text>
+                                                            <Text fontSize="xs" fontWeight="bold" color="red.500">
+                                                                ₹{ccDetails.previousStatementAmount.toLocaleString()}
+                                                            </Text>
+                                                        </HStack>
+                                                        <HStack justify="space-between" mb={1}>
+                                                            <Text fontSize="xs" color="gray.500">Amount Due:</Text>
+                                                            <Text fontSize="sm" fontWeight="bold" color="red.500">
+                                                                ₹{ccDetails.outstandingStatementAmount.toLocaleString()}
+                                                            </Text>
+                                                        </HStack>
+                                                        <HStack justify="space-between">
+                                                            <Text fontSize="xs" color="gray.500">Limit Avail:</Text>
+                                                            <Text fontSize="xs" fontWeight="bold">
+                                                                ₹{((account.creditLimit || 0) - account.balance).toLocaleString()}
+                                                            </Text>
+                                                        </HStack>
+                                                    </>
+                                                );
+                                            })()}
+                                        </Box>
                                     )}
-                                    {account.type === 'LOAN' && account.emiAmount !== undefined && (
-                                        <Text fontSize="xs" color="gray.500">
-                                            EMI: ₹{account.emiAmount.toLocaleString()} / month
-                                        </Text>
+                                    {account.type === 'LOAN' && (
+                                        <Box mt={2} p={2} bg="gray.50" _dark={{ bg: 'gray.700' }} borderRadius="md" borderWidth="1px">
+                                            <HStack justify="space-between" mb={1}>
+                                                <Text fontSize="xs" color="gray.500">Remaining Balance:</Text>
+                                                <Text fontSize="sm" fontWeight="bold" color="red.500">
+                                                    ₹{getLoanDetails(account, expenses)!.remainingBalance.toLocaleString()}
+                                                </Text>
+                                            </HStack>
+                                            <HStack justify="space-between" mb={1}>
+                                                <Text fontSize="xs" color="gray.500">Remaining EMIs:</Text>
+                                                <Text fontSize="xs" fontWeight="bold">
+                                                    {getLoanDetails(account, expenses)!.remainingEMIs}
+                                                </Text>
+                                            </HStack>
+                                            {account.emiAmount !== undefined && (
+                                                <HStack justify="space-between" mb={1}>
+                                                    <Text fontSize="xs" color="gray.500">EMI:</Text>
+                                                    <Text fontSize="xs" fontWeight="bold">₹{account.emiAmount.toLocaleString()} / month</Text>
+                                                </HStack>
+                                            )}
+                                            {account.loanEndDate && (
+                                                <HStack justify="space-between">
+                                                    <Text fontSize="xs" color="gray.500">Ends:</Text>
+                                                    <Text fontSize="xs" fontWeight="bold">{format(parseISO(account.loanEndDate), 'MMM yyyy')}</Text>
+                                                </HStack>
+                                            )}
+                                        </Box>
                                     )}
                                 </Stat>
                                 <HStack mt={2} justifyContent="space-between">
-                                    <Badge colorScheme="green">Active</Badge>
+                                    <Badge colorScheme={account.type === 'LOAN' && isLoanCleared(account) ? "gray" : "green"}>
+                                        {account.type === 'LOAN' && isLoanCleared(account) ? "Cleared" : "Active"}
+                                    </Badge>
                                     {account.dueDate && (
                                         <Text fontSize="xs" color="gray.500">Due: {account.dueDate}th</Text>
                                     )}
                                     <InfoIcon color="gray.400" />
                                 </HStack>
+                                {account.type === 'LOAN' && !isLoanCleared(account) && (
+                                    <>
+                                        <PayEmiForm loan={account} />
+                                        <ForecloseLoanForm loan={account} />
+                                    </>
+                                )}
+                                {account.type === 'CREDIT_CARD' && (
+                                    <PayCCBillForm account={account} />
+                                )}
                             </CardBody>
                         </Card>
                     ))}
@@ -203,7 +290,12 @@ const AccountList = ({ type }: { type?: 'BANK' | 'CREDIT_CARD' | 'LOAN' }) => {
         <Box>
             {(!type || type === 'BANK') && renderAccountCards(bankAccounts, 'Bank Accounts', 'blue')}
             {(!type || type === 'CREDIT_CARD') && renderAccountCards(creditCards, 'Credit Cards', 'orange')}
-            {(!type || type === 'LOAN') && renderAccountCards(loans, 'Loans', 'purple')}
+            {(!type || type === 'LOAN') && (
+                <>
+                    {renderAccountCards(activeLoans, 'Active Loans', 'purple')}
+                    {renderAccountCards(clearedLoans, 'Cleared / History Loans', 'gray')}
+                </>
+            )}
 
             {/* Account Info Modal */}
             <Modal isOpen={isInfoOpen} onClose={onInfoClose} isCentered>
@@ -293,7 +385,14 @@ const AccountList = ({ type }: { type?: 'BANK' | 'CREDIT_CARD' | 'LOAN' }) => {
                             <Tbody>
                                 {filteredTransactions.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map(e => (
                                     <Tr key={e.id}>
-                                        <Td>{format(parseISO(e.date), 'MMM dd, yyyy')}</Td>
+                                        <Td>
+                                            {format(parseISO(e.date), 'MMM dd, yyyy')}
+                                            {activeAccount?.type === 'CREDIT_CARD' && (
+                                                <Box fontSize="xs" color="gray.500" mt={1}>
+                                                    {getExpenseCycleLabel(activeAccount, e.date)}
+                                                </Box>
+                                            )}
+                                        </Td>
                                         <Td>{e.description}</Td>
                                         <Td><Badge>{e.category}</Badge></Td>
                                         <Td isNumeric fontWeight="bold" color={e.type === 'CREDIT' ? 'green.500' : 'red.500'}>

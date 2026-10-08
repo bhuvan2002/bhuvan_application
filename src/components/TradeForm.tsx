@@ -19,7 +19,8 @@ import {
     Card,
     CardBody,
     Divider,
-    Text
+    Text,
+    useColorModeValue
 } from '@chakra-ui/react';
 import { useForm } from 'react-hook-form';
 import { v4 as uuidv4 } from 'uuid';
@@ -148,11 +149,9 @@ const TradeForm = () => {
 
                                 {/* Column 3: P&L Input (Manual) */}
                                 <Card
-                                    bg={(pnlValue || 0) > 0 ? 'green.50' : ((pnlValue || 0) < 0 ? 'red.50' : 'gray.50')}
-                                    borderColor={(pnlValue || 0) > 0 ? 'green.400' : ((pnlValue || 0) < 0 ? 'red.400' : 'gray.200')}
+                                    bg={(pnlValue || 0) > 0 ? useColorModeValue('green.50', 'rgba(72, 187, 120, 0.1)') : ((pnlValue || 0) < 0 ? useColorModeValue('red.50', 'rgba(245, 101, 101, 0.1)') : useColorModeValue('gray.50', 'whiteAlpha.50'))}
+                                    borderColor={(pnlValue || 0) > 0 ? 'green.400' : ((pnlValue || 0) < 0 ? 'red.400' : useColorModeValue('gray.200', 'gray.700'))}
                                     borderWidth="2px"
-                                    boxShadow="sm"
-                                    borderRadius="lg"
                                 >
                                     <CardBody>
                                         <FormControl isRequired>
@@ -196,7 +195,7 @@ const TradeForm = () => {
                         </VStack>
                     </ModalBody>
 
-                    <ModalFooter bg="gray.50" borderBottomRadius="md">
+                    <ModalFooter bg={useColorModeValue('gray.50', 'gray.800')} borderBottomRadius="2xl" borderTopWidth="1px" borderColor={useColorModeValue('gray.200', 'gray.700')}>
                         <Button variant="outline" mr={3} onClick={onClose} size="lg">Cancel</Button>
                         <Button colorScheme="teal" type="submit" form="trade-form" size="lg" px={8}>
                             Log Trade

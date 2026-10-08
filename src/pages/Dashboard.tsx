@@ -41,10 +41,13 @@ import {
 } from '@chakra-ui/react';
 import { useData } from '../context/DataContext';
 import { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 
-import { format, isToday, isTomorrow, parseISO, isSameMonth, isSameYear } from 'date-fns';
+import { format, isToday, isTomorrow, parseISO, isSameMonth, isSameYear, isEqual, isBefore, isAfter, startOfDay } from 'date-fns';
 import { useState, useMemo } from 'react';
 import type { Expense } from '../types';
+import { getLoanDetails } from '../utils/loanUtils';
+import { getCreditCardCycleDetails } from '../utils/creditCardUtils';
 import { SearchIcon } from '@chakra-ui/icons';
 import {
     LineChart,
@@ -67,6 +70,7 @@ const Dashboard = () => {
         trades, accounts, expenses, todos,
         fetchTrades, fetchAccounts, fetchExpenses, fetchTodos
     } = useData();
+    const navigate = useNavigate();
 
     const { isOpen, onOpen, onClose } = useDisclosure();
     const [detailData, setDetailData] = useState<{ title: string; data: Expense[] }>({ title: '', data: [] });
@@ -111,86 +115,68 @@ const Dashboard = () => {
         };
     });
 
-    const totalBalance = accounts.filter(a => a.type !== 'CREDIT_CARD').reduce((acc, a) => acc + a.balance, 0);
+    const totalAssets = accounts.filter(a => a.type === 'BANK').reduce((acc, a) => acc + a.balance, 0);
+    const totalLiabilities = accounts.reduce((acc, a) => {
+        if (a.type === 'CREDIT_CARD') return acc + a.balance;
+        if (a.type === 'LOAN') return acc + getLoanDetails(a, expenses)!.remainingBalance;
+        return acc;
+    }, 0);
+    const netWorth = totalAssets - totalLiabilities;
+
+    const isDebit = (e: Expense) => e.type === 'DEBIT' || (e.type === 'TRANSFER' && (e.category === 'CC Bill Payment' || e.category === 'EMI Payment'));
+
     const totalCredit = expenses.filter(e => e.type === 'CREDIT').reduce((acc, e) => acc + Number(e.amount), 0);
-    const totalDebit = expenses.filter(e => e.type === 'DEBIT').reduce((acc, e) => acc + Number(e.amount), 0);
+    const totalDebit = expenses.filter(isDebit).reduce((acc, e) => acc + Number(e.amount), 0);
 
     const todaySpent = expenses
-        .filter(e => e.type === 'DEBIT' && isToday(parseISO(e.date)))
+        .filter(e => isDebit(e) && isToday(parseISO(e.date)))
         .reduce((acc, e) => acc + Number(e.amount), 0);
 
     const monthlySpent = expenses
-        .filter(e => e.type === 'DEBIT' && isSameMonth(parseISO(e.date), new Date()) && isSameYear(parseISO(e.date), new Date()))
+        .filter(e => isDebit(e) && isSameMonth(parseISO(e.date), new Date()) && isSameYear(parseISO(e.date), new Date()))
         .reduce((acc, e) => acc + Number(e.amount), 0);
 
     const ccDetails = useMemo(() => {
-        let totalOwed = 0;
-        let spentThisMonth = 0;
-        let paidThisMonth = 0;
+        let totalCurrentSpent = 0;
+        let totalOutstanding = 0;
 
         accounts.filter(a => a.type === 'CREDIT_CARD').forEach(acc => {
-            totalOwed += acc.balance;
-        });
-
-        expenses.forEach(e => {
-            const acc = accounts.find(a => a.id === e.accountId);
-            const toAcc = accounts.find(a => a.id === e.toAccountId);
-
-            const isCurrentMonth = isSameMonth(parseISO(e.date), new Date()) && isSameYear(parseISO(e.date), new Date());
-
-            if (isCurrentMonth) {
-                if (acc && acc.type === 'CREDIT_CARD' && (e.type === 'DEBIT' || !e.type)) {
-                    spentThisMonth += e.amount;
-                }
-                if (toAcc && toAcc.type === 'CREDIT_CARD' && e.type === 'TRANSFER') {
-                    paidThisMonth += e.amount;
-                }
+            const details = getCreditCardCycleDetails(acc, expenses);
+            if (details) {
+                // Modified to reflect the updated logic: CC usage is based on the manually tracked account balance
+                totalCurrentSpent += acc.balance; 
+                totalOutstanding += details.outstandingStatementAmount;
             }
         });
 
-        const pastOwed = totalOwed - spentThisMonth + paidThisMonth;
-
         return {
-            spentThisMonth,
-            pastOwed: pastOwed > 0 ? pastOwed : 0,
+            spentThisMonth: totalCurrentSpent,
+            pastOwed: totalOutstanding,
         };
     }, [accounts, expenses]);
 
     const loanDetails = useMemo(() => {
-        let totalOwed = 0;
-        let spentThisMonth = 0;
-        let paidThisMonth = 0;
+        let totalRemainingBalance = 0;
+        let totalEmi = 0;
 
         accounts.filter(a => a.type === 'LOAN').forEach(acc => {
-            totalOwed += acc.balance;
-        });
-
-        expenses.forEach(e => {
-            const acc = accounts.find(a => a.id === e.accountId);
-            const toAcc = accounts.find(a => a.id === e.toAccountId);
-
-            const isCurrentMonth = isSameMonth(parseISO(e.date), new Date()) && isSameYear(parseISO(e.date), new Date());
-
-            if (isCurrentMonth) {
-                if (acc && acc.type === 'LOAN' && (e.type === 'DEBIT' || !e.type)) {
-                    spentThisMonth += e.amount;
-                }
-                if (toAcc && toAcc.type === 'LOAN' && e.type === 'TRANSFER') {
-                    paidThisMonth += e.amount;
+            const details = getLoanDetails(acc, expenses);
+            if (details) {
+                totalRemainingBalance += details.remainingBalance;
+                if (acc.emiAmount) {
+                    totalEmi += acc.emiAmount;
                 }
             }
         });
 
-        const pastOwed = totalOwed - spentThisMonth + paidThisMonth;
-
         return {
-            spentThisMonth,
-            pastOwed: pastOwed > 0 ? pastOwed : 0,
+            remainingBalance: totalRemainingBalance,
+            totalEmi: totalEmi,
         };
     }, [accounts, expenses]);
 
     // Expenses & Income by Category
-    const expensesByCategory = expenses.filter(e => e.type === 'DEBIT').reduce((acc, e) => {
+    const expensesByCategory = expenses.filter(isDebit).reduce((acc, e) => {
         acc[e.category] = (acc[e.category] || 0) + Number(e.amount);
         return acc;
     }, {} as Record<string, number>);
@@ -215,23 +201,27 @@ const Dashboard = () => {
                 title = 'Credit / Income Details';
                 break;
             case 'DEBIT':
-                filtered = expenses.filter(e => e.type === 'DEBIT');
+                filtered = expenses.filter(isDebit);
                 title = 'Debit / Expense Details';
                 break;
             case 'TODAY':
-                filtered = expenses.filter(e => e.type === 'DEBIT' && isToday(parseISO(e.date)));
+                filtered = expenses.filter(e => isDebit(e) && isToday(parseISO(e.date)));
                 title = "Today's Spent Details";
                 break;
             case 'MONTHLY':
-                filtered = expenses.filter(e => e.type === 'DEBIT' && isSameMonth(parseISO(e.date), new Date()) && isSameYear(parseISO(e.date), new Date()));
+                filtered = expenses.filter(e => isDebit(e) && isSameMonth(parseISO(e.date), new Date()) && isSameYear(parseISO(e.date), new Date()));
                 title = `Monthly Expenses - ${format(new Date(), 'MMMM yyyy')}`;
                 break;
             case 'CC':
                 filtered = expenses.filter(e => {
                     const acc = accounts.find(a => a.id === e.accountId);
-                    return acc && acc.type === 'CREDIT_CARD' && e.type === 'DEBIT' && isSameMonth(parseISO(e.date), new Date()) && isSameYear(parseISO(e.date), new Date());
+                    if (!acc || acc.type !== 'CREDIT_CARD') return false;
+                    const details = getCreditCardCycleDetails(acc, expenses);
+                    if (!details) return false;
+                    const d = startOfDay(parseISO(e.date));
+                    return e.type === 'DEBIT' && (isEqual(d, details.currentCycleStart) || isAfter(d, details.currentCycleStart)) && isBefore(d, details.currentCycleEnd);
                 });
-                title = `Credit Card Usage - ${format(new Date(), 'MMMM yyyy')}`;
+                title = `Current Cycle Credit Card Usage`;
                 break;
             case 'LOAN':
                 filtered = expenses.filter(e => {
@@ -290,7 +280,7 @@ const Dashboard = () => {
             const amount = Number(e.amount) || 0;
             if (e.type === 'CREDIT') {
                 totalIncome += amount;
-            } else {
+            } else if (e.type === 'DEBIT' || !e.type) {
                 totalSpent += amount;
                 catBreakdown[e.category] = (catBreakdown[e.category] || 0) + amount;
             }
@@ -340,11 +330,22 @@ const Dashboard = () => {
                             </Card>
                             <Card borderTop="4px" borderColor="blue.400">
                                 <CardBody>
-                                    <Stat>
-                                        <StatLabel>Total Balance</StatLabel>
-                                        <StatNumber>₹{totalBalance.toLocaleString()}</StatNumber>
-                                        <StatHelpText>{accounts.length} Accounts</StatHelpText>
+                                    <Stat mb={4}>
+                                        <StatLabel>Net Worth (Total Balance)</StatLabel>
+                                        <StatNumber color={netWorth >= 0 ? 'green.500' : 'red.500'}>
+                                            ₹{netWorth.toLocaleString()}
+                                        </StatNumber>
                                     </Stat>
+                                    <SimpleGrid columns={2} spacing={2} pt={2} borderTopWidth="1px" borderColor="gray.100" _dark={{ borderColor: 'gray.700' }}>
+                                        <Stat>
+                                            <StatLabel fontSize="xs" color="gray.500">+ Amount (Assets)</StatLabel>
+                                            <StatNumber fontSize="md" color="green.500">₹{totalAssets.toLocaleString()}</StatNumber>
+                                        </Stat>
+                                        <Stat>
+                                            <StatLabel fontSize="xs" color="gray.500">- Amount (Liabilities)</StatLabel>
+                                            <StatNumber fontSize="md" color="red.500">₹{totalLiabilities.toLocaleString()}</StatNumber>
+                                        </Stat>
+                                    </SimpleGrid>
                                 </CardBody>
                             </Card>
                             <Card borderTop="4px" borderColor="purple.400">
@@ -479,6 +480,33 @@ const Dashboard = () => {
                     {/* --- FINANCE TAB --- */}
                     <TabPanel px={0}>
                         <SimpleGrid columns={{ base: 1, md: 3 }} spacing={6} mb={8}>
+                            <Card borderTop="4px" borderColor="blue.400">
+                                <CardBody>
+                                    <Stat>
+                                        <StatLabel>Net Worth</StatLabel>
+                                        <StatNumber color={netWorth >= 0 ? 'green.500' : 'red.500'}>₹{netWorth.toLocaleString()}</StatNumber>
+                                    </Stat>
+                                </CardBody>
+                            </Card>
+                            <Card borderTop="4px" borderColor="green.400">
+                                <CardBody>
+                                    <Stat>
+                                        <StatLabel>Total Assets</StatLabel>
+                                        <StatNumber color="green.500">₹{totalAssets.toLocaleString()}</StatNumber>
+                                    </Stat>
+                                </CardBody>
+                            </Card>
+                            <Card borderTop="4px" borderColor="red.400">
+                                <CardBody>
+                                    <Stat>
+                                        <StatLabel>Total Liabilities</StatLabel>
+                                        <StatNumber color="red.500">₹{totalLiabilities.toLocaleString()}</StatNumber>
+                                    </Stat>
+                                </CardBody>
+                            </Card>
+                        </SimpleGrid>
+
+                        <SimpleGrid columns={{ base: 1, md: 3 }} spacing={6} mb={8}>
                             <Card
                                 borderTop="4px"
                                 borderColor="green.400"
@@ -550,7 +578,7 @@ const Dashboard = () => {
                             >
                                 <CardBody>
                                     <Stat>
-                                        <StatLabel>CC Usage This Month</StatLabel>
+                                        <StatLabel>CC Usage Current Cycle</StatLabel>
                                         <StatNumber color="cyan.600">₹{ccDetails.spentThisMonth.toLocaleString()}</StatNumber>
                                         <StatHelpText>
                                             {ccDetails.pastOwed > 0 ? (
@@ -568,21 +596,21 @@ const Dashboard = () => {
                                 borderTop="4px"
                                 borderColor="pink.400"
                                 cursor="pointer"
-                                onClick={() => handleMetricClick('LOAN')}
+                                onClick={() => navigate('/accounts', { state: { tabIndex: 2 } })}
                                 _hover={{ shadow: 'lg', transform: 'translateY(-2px)' }}
                                 transition="all 0.2s"
                             >
                                 <CardBody>
                                     <Stat>
-                                        <StatLabel>Loan Usage This Month</StatLabel>
-                                        <StatNumber color="pink.600">₹{loanDetails.spentThisMonth.toLocaleString()}</StatNumber>
+                                        <StatLabel>Total Remaining Loan</StatLabel>
+                                        <StatNumber color="pink.600">₹{loanDetails.remainingBalance.toLocaleString()}</StatNumber>
                                         <StatHelpText>
-                                            {loanDetails.pastOwed > 0 ? (
-                                                <Text as="span" color="red.500" fontWeight="bold">
-                                                    Overdue: ₹{loanDetails.pastOwed.toLocaleString()}
+                                            {loanDetails.totalEmi > 0 ? (
+                                                <Text as="span">
+                                                    Total EMI: ₹{loanDetails.totalEmi.toLocaleString()} / month
                                                 </Text>
                                             ) : (
-                                                <Text as="span">All clear for past months!</Text>
+                                                <Text as="span">No active EMIs</Text>
                                             )}
                                         </StatHelpText>
                                     </Stat>
@@ -657,9 +685,11 @@ const Dashboard = () => {
                                         <Tbody>
                                             {accounts.map(acc => (
                                                 <Tr key={acc.id}>
-                                                    <Td>{acc.name}</Td>
+                                                    <Td>{acc.name} <Badge ml={2} colorScheme={acc.type === 'BANK' ? 'green' : 'red'}>{acc.type}</Badge></Td>
                                                     <Td>{acc.bankName}</Td>
-                                                    <Td isNumeric fontWeight="bold">₹{acc.balance.toLocaleString()}</Td>
+                                                    <Td isNumeric fontWeight="bold" color={acc.type === 'BANK' ? 'green.500' : 'red.500'}>
+                                                        {acc.type === 'BANK' ? '' : '-'}₹{acc.balance.toLocaleString()}
+                                                    </Td>
                                                 </Tr>
                                             ))}
                                         </Tbody>

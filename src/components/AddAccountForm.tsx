@@ -39,6 +39,7 @@ const AddAccountForm = ({ children, initialType = 'BANK' }: { children?: React.R
             balance: Number(data.balance),
             creditLimit: data.creditLimit ? Number(data.creditLimit) : null,
             dueDate: data.dueDate ? Number(data.dueDate) : null,
+            billingCycle: data.billingCycle ? Number(data.billingCycle) : null,
             emiAmount: data.emiAmount ? Number(data.emiAmount) : undefined,
         };
         try {
@@ -63,7 +64,7 @@ const AddAccountForm = ({ children, initialType = 'BANK' }: { children?: React.R
     return (
         <>
             {children ? (
-                <Box onClick={onOpen} display="inline-block" width="full">
+                <Box onClick={onOpen} display="inline-block" width="auto">
                     {children}
                 </Box>
             ) : (
@@ -113,12 +114,16 @@ const AddAccountForm = ({ children, initialType = 'BANK' }: { children?: React.R
                                     </FormControl>
                                 </>
                             )}
-                            
+
                             {accountType === 'CREDIT_CARD' && (
                                 <>
                                     <FormControl isRequired>
                                         <FormLabel>Credit Limit</FormLabel>
                                         <Input type="number" {...register('creditLimit', { required: true })} />
+                                    </FormControl>
+                                    <FormControl isRequired>
+                                        <FormLabel>Statement/Billing Cycle Date (Day of Month)</FormLabel>
+                                        <Input type="number" min={1} max={31} {...register('billingCycle', { required: true })} />
                                     </FormControl>
                                     <FormControl isRequired>
                                         <FormLabel>Due Date (Day of Month)</FormLabel>

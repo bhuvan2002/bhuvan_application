@@ -132,7 +132,7 @@ const TodoList = () => {
     );
 
     return (
-        <Box maxW="900px" mx="auto" p={4} pb={20}>
+        <Box w="full" mx="auto" p={4} pb={20}>
             <VStack spacing={6} align="stretch">
                 <Box>
                     <Heading size="lg" mb={2}>My Tasks</Heading>

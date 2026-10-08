@@ -13,6 +13,8 @@ import {Box,Flex,Heading,VStack,HStack,Text,Button,useColorModeValue,FormControl
     ModalBody,
     ModalCloseButton,
     useDisclosure,
+    Card,
+    CardBody,
 } from '@chakra-ui/react';
 import { useState, useEffect, useRef } from 'react';
 import { AddIcon, DeleteIcon, ChevronLeftIcon, ChevronRightIcon } from '@chakra-ui/icons';
@@ -319,28 +321,30 @@ export default function Planner() {
 
                 {/* Info Panel / Stats */}
                 <VStack w="300px" display={{ base: 'none', lg: 'flex' }} spacing={4} align="stretch">
-                    <Box p={4} bg={bgColor} borderRadius="xl" borderWidth="1px" borderColor={borderColor}>
-                        <Heading size="sm" mb={4}>Summary for {format(selectedDate, 'MMM d')}</Heading>
-                        <VStack align="stretch" spacing={2}>
-                            {Object.entries(PLAN_TYPES).map(([type, color]) => {
-                                const count = currentDayPlans.filter(p => p.type === type).length;
-                                if (count === 0) return null;
-                                return (
-                                    <HStack key={type} justify="space-between">
-                                        <HStack>
-                                            <Box w={3} h={3} borderRadius="full" bg={color} />
-                                            <Text fontSize="sm">{type}</Text>
+                    <Card>
+                        <CardBody>
+                            <Heading size="sm" mb={4}>Summary for {format(selectedDate, 'MMM d')}</Heading>
+                            <VStack align="stretch" spacing={2}>
+                                {Object.entries(PLAN_TYPES).map(([type, color]) => {
+                                    const count = currentDayPlans.filter(p => p.type === type).length;
+                                    if (count === 0) return null;
+                                    return (
+                                        <HStack key={type} justify="space-between">
+                                            <HStack>
+                                                <Box w={3} h={3} borderRadius="full" bg={color} />
+                                                <Text fontSize="sm">{type}</Text>
+                                            </HStack>
+                                            <Text fontSize="sm" fontWeight="bold">{count}</Text>
                                         </HStack>
-                                        <Text fontSize="sm" fontWeight="bold">{count}</Text>
-                                    </HStack>
-                                );
-                            })}
-                        </VStack>
-                    </Box>
+                                    );
+                                })}
+                            </VStack>
+                        </CardBody>
+                    </Card>
 
-                    <Box p={4} bg="blue.50" _dark={{ bg: 'blue.900' }} borderRadius="xl">
-                        <Heading size="sm" mb={2} color="blue.600" _dark={{ color: 'blue.200' }}>Tip</Heading>
-                        <Text fontSize="sm" color="blue.600" _dark={{ color: 'blue.200' }}>
+                    <Box p={4} bg={useColorModeValue('brand.50', 'whiteAlpha.100')} borderRadius="xl">
+                        <Heading size="sm" mb={2} color={useColorModeValue('brand.700', 'brand.200')}>Tip</Heading>
+                        <Text fontSize="sm" color={useColorModeValue('brand.700', 'brand.200')}>
                             Click anywhere on the timeline to add a plan at that time.
                         </Text>
                     </Box>

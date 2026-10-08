@@ -20,6 +20,8 @@ interface DataContextType {
     updateAccount: (account: Account) => void;
     deleteAccount: (id: string) => void;
     addExpense: (expense: Expense) => void;
+    updateExpense: (expense: Expense) => void;
+    deleteExpense: (id: string) => void;
     addBulkExpenses: (expenses: Partial<Expense>[]) => Promise<void>;
     addTodo: (todo: Todo) => void;
     toggleTodo: (id: string) => void;
@@ -196,6 +198,36 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
         }
     };
 
+    const updateExpense = async (expense: Expense) => {
+        try {
+            const res = await apiService.put(`/expenses/${expense.id}`, expense);
+            if (res.status === 200) {
+                setExpenses(prev => prev.map(e => e.id === expense.id ? res.data : e));
+                
+                // Refresh accounts to get updated balance
+                const accountsRes = await apiService.get('/accounts');
+                if (accountsRes.status === 200) setAccounts(accountsRes.data);
+            }
+        } catch (error) {
+            console.error('Failed to update expense:', error);
+        }
+    };
+
+    const deleteExpense = async (id: string) => {
+        try {
+            const res = await apiService.delete(`/expenses/${id}`);
+            if (res.status === 200 || res.status === 204) {
+                setExpenses(prev => prev.filter(e => e.id !== id));
+                
+                // Refresh accounts to get updated balance
+                const accountsRes = await apiService.get('/accounts');
+                if (accountsRes.status === 200) setAccounts(accountsRes.data);
+            }
+        } catch (error) {
+            console.error('Failed to delete expense:', error);
+        }
+    };
+
     const addBulkExpenses = async (expensesData: Partial<Expense>[]) => {
         try {
             const res = await apiService.post('/expenses/bulk', { expenses: expensesData });
@@ -294,7 +326,7 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
             trades, accounts, expenses, todos, notes,
             fetchTrades, fetchAccounts, fetchExpenses, fetchTodos, fetchNotes,
             addTrade, deleteTrade,
-            addAccount, updateAccount, deleteAccount, addExpense, addBulkExpenses,
+            addAccount, updateAccount, deleteAccount, addExpense, updateExpense, deleteExpense, addBulkExpenses,
             addTodo, toggleTodo, deleteTodo, updateTodo,
             addNote, updateNote, deleteNote,
             isGlobalLoading

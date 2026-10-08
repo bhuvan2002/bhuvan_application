@@ -1,5 +1,6 @@
-import { Heading, Box, HStack, VStack, useToast, Tabs, TabList, TabPanels, Tab, TabPanel, Text, Button } from '@chakra-ui/react';
+import { Heading, HStack, VStack, useToast, Tabs, TabList, TabPanels, Tab, TabPanel, Text, Button, CardBody, Card } from '@chakra-ui/react';
 import { useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import AIAnalyzeButton from '../components/ai/AIAnalyzeButton';
 import LoadingInsights from '../components/ai/LoadingInsights';
@@ -9,6 +10,8 @@ import AddAccountForm from '../components/AddAccountForm';
 import AccountList from '../components/AccountList';
 
 const Accounts = () => {
+    const location = useLocation();
+    const defaultIndex = location.state?.tabIndex || 0;
     const { user } = useAuth();
     const isTrader = user?.role === 'TRADER';
     const toast = useToast();
@@ -46,7 +49,7 @@ const Accounts = () => {
             {isAnalyzing && <LoadingInsights />}
             {aiData && <AIInsightsPanel data={aiData} />}
 
-            <Tabs variant="enclosed" colorScheme="blue">
+            <Tabs variant="enclosed" colorScheme="blue" defaultIndex={defaultIndex}>
                 <TabList>
                     <Tab>Bank Accounts</Tab>
                     <Tab>Credit Cards</Tab>
@@ -55,40 +58,58 @@ const Accounts = () => {
 
                 <TabPanels>
                     <TabPanel>
-                        <Box p={4} borderWidth={1} borderRadius="md" shadow="sm">
-                            <Heading size="md" mb={4}>My Bank Accounts</Heading>
-                            <Text color="gray.500" mb={4}>Manage your bank balances, income, and expenses here.</Text>
-                            <AccountList type="BANK" />
-                            {isTrader && (
-                                <AddAccountForm initialType="BANK">
-                                    <Button colorScheme="blue" size="sm">Add Bank Account</Button>
-                                </AddAccountForm>
-                            )}
-                        </Box>
+                        <Card>
+                            <CardBody>
+                                <HStack justifyContent="space-between" alignItems="flex-start" mb={6}>
+                                    <VStack align="start" spacing={1}>
+                                        <Heading size="md">My Bank Accounts</Heading>
+                                        <Text color="gray.500">Manage your bank balances, income, and expenses here.</Text>
+                                    </VStack>
+                                    {isTrader && (
+                                        <AddAccountForm initialType="BANK">
+                                            <Button colorScheme="blue" size="sm">Add Bank Account</Button>
+                                        </AddAccountForm>
+                                    )}
+                                </HStack>
+                                <AccountList type="BANK" />
+                            </CardBody>
+                        </Card>
                     </TabPanel>
                     <TabPanel>
-                        <Box p={4} borderWidth={1} borderRadius="md" shadow="sm">
-                            <Heading size="md" mb={4}>My Credit Cards</Heading>
-                            <Text color="gray.500" mb={4}>Track credit card spending and bill payments.</Text>
-                            <AccountList type="CREDIT_CARD" />
-                            {isTrader && (
-                                <AddAccountForm initialType="CREDIT_CARD">
-                                    <Button colorScheme="teal" size="sm">Add Credit Card</Button>
-                                </AddAccountForm>
-                            )}
-                        </Box>
+                        <Card>
+                            <CardBody>
+                                <HStack justifyContent="space-between" alignItems="flex-start" mb={6}>
+                                    <VStack align="start" spacing={1}>
+                                        <Heading size="md">My Credit Cards</Heading>
+                                        <Text color="gray.500">Track credit card spending and bill payments.</Text>
+                                    </VStack>
+                                    {isTrader && (
+                                        <AddAccountForm initialType="CREDIT_CARD">
+                                            <Button colorScheme="teal" size="sm">Add Credit Card</Button>
+                                        </AddAccountForm>
+                                    )}
+                                </HStack>
+                                <AccountList type="CREDIT_CARD" />
+                            </CardBody>
+                        </Card>
                     </TabPanel>
                     <TabPanel>
-                        <Box p={4} borderWidth={1} borderRadius="md" shadow="sm">
-                            <Heading size="md" mb={4}>My Loans</Heading>
-                            <Text color="gray.500" mb={4}>Manage EMI schedules and loan payments.</Text>
-                            <AccountList type="LOAN" />
-                            {isTrader && (
-                                <AddAccountForm initialType="LOAN">
-                                    <Button colorScheme="purple" size="sm">Add Loan</Button>
-                                </AddAccountForm>
-                            )}
-                        </Box>
+                        <Card>
+                            <CardBody>
+                                <HStack justifyContent="space-between" alignItems="flex-start" mb={6}>
+                                    <VStack align="start" spacing={1}>
+                                        <Heading size="md">My Loans</Heading>
+                                        <Text color="gray.500">Manage EMI schedules and loan payments.</Text>
+                                    </VStack>
+                                    {isTrader && (
+                                        <AddAccountForm initialType="LOAN">
+                                            <Button colorScheme="purple" size="sm">Add Loan</Button>
+                                        </AddAccountForm>
+                                    )}
+                                </HStack>
+                                <AccountList type="LOAN" />
+                            </CardBody>
+                        </Card>
                     </TabPanel>
                 </TabPanels>
             </Tabs>

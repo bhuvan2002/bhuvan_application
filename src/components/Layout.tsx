@@ -25,6 +25,7 @@ const Links = [
     { name: 'Dashboard', path: '/', roles: ['TRADER'] },
     { name: 'Journal', path: '/journal', roles: ['TRADER'] },
     { name: 'Accounts', path: '/accounts', roles: ['TRADER', 'PARENT'] },
+    { name: 'Daily Expenses', path: '/expenses', roles: ['TRADER', 'PARENT'] },
     { name: 'To-Do', path: '/todo', roles: ['TRADER'] },
     { name: 'Planner', path: '/planner', roles: ['TRADER'] },
     { name: 'Notes', path: '/notes', roles: ['TRADER'] },
@@ -39,10 +40,13 @@ const NavLink = ({ children, to, isActive }: { children: React.ReactNode; to: st
         rounded={'md'}
         _hover={{
             textDecoration: 'none',
-            bg: useColorModeValue('gray.200', 'gray.700'),
+            bg: useColorModeValue('brand.50', 'whiteAlpha.100'),
+            color: useColorModeValue('brand.600', 'brand.200'),
         }}
-        bg={isActive ? useColorModeValue('gray.200', 'gray.700') : undefined}
-        fontWeight={isActive ? 'bold' : 'normal'}
+        bg={isActive ? useColorModeValue('brand.50', 'whiteAlpha.100') : undefined}
+        color={isActive ? useColorModeValue('brand.700', 'brand.200') : useColorModeValue('gray.600', 'gray.300')}
+        fontWeight={isActive ? '600' : '500'}
+        transition="all 0.2s"
     >
         {children}
     </Link>
@@ -82,7 +86,16 @@ export default function Layout() {
 
     return (
         <>
-            <Box bg={useColorModeValue('gray.100', 'gray.900')} px={4}>
+            <Box
+                bg={useColorModeValue('whiteAlpha.800', 'rgba(17, 24, 39, 0.8)')}
+                backdropFilter="blur(12px)"
+                px={4}
+                position="sticky"
+                top={0}
+                zIndex="banner"
+                borderBottom="1px solid"
+                borderColor={useColorModeValue('gray.100', 'gray.700')}
+            >
                 <Flex h={16} alignItems={'center'} justifyContent={'space-between'}>
                     <IconButton
                         size={'md'}
@@ -92,7 +105,9 @@ export default function Layout() {
                         onClick={isOpen ? onClose : onOpen}
                     />
                     <HStack spacing={8} alignItems={'center'}>
-                        <Box fontWeight="bold" fontSize="lg">TradeTracker</Box>
+                        <Box fontWeight="700" fontSize="xl" bgGradient="linear(to-r, brand.500, purple.500)" bgClip="text">
+                            BhuvanApp
+                        </Box>
                         <HStack as={'nav'} spacing={4} display={{ base: 'none', md: 'flex' }}>
                             {filteredLinks.map((link) => (
                                 <NavLink key={link.name} to={link.path} isActive={location.pathname === link.path}>
@@ -112,10 +127,14 @@ export default function Layout() {
                                 <MenuButton
                                     as={Button}
                                     rounded={'full'}
-                                    variant={'link'}
+                                    variant={'ghost'}
                                     cursor={'pointer'}
-                                    minW={0}>
-                                    <Text>{user?.username} ({user?.role})</Text>
+                                    minW={0}
+                                    px={2}>
+                                    <Text fontWeight="600">{user?.username}</Text>
+                                    <Text fontSize="xs" color="gray.500" ml={2} display={{ base: 'none', md: 'block' }}>
+                                        ({user?.role})
+                                    </Text>
                                 </MenuButton>
                                 <MenuList>
                                     <MenuItem onClick={logout}>Logout</MenuItem>
@@ -138,7 +157,7 @@ export default function Layout() {
                 ) : null}
             </Box>
 
-            <Box p={4}>
+            <Box p={{ base: 4, md: 6 }} w="full" mx="auto">
                 <Outlet />
             </Box>
         </>

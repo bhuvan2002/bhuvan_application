@@ -5,6 +5,7 @@ import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import TradingJournal from './pages/TradingJournal';
 import Accounts from './pages/Accounts';
+import DailyExpenses from './pages/DailyExpenses';
 import TodoList from './pages/TodoList';
 import Planner from './pages/Planner';
 import Notes from './pages/Notes';
@@ -38,6 +39,7 @@ function App() {
         <Route element={<ProtectedRoute allowedRoles={['TRADER', 'PARENT']} />}>
           <Route path="/journal" element={<TradingJournal />} />
           <Route path="/accounts" element={<Accounts />} />
+          <Route path="/expenses" element={<DailyExpenses />} />
           <Route path="/todo" element={<TodoList />} />
         </Route>
       </Route>
