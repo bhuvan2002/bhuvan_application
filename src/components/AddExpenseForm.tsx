@@ -24,6 +24,7 @@ import { useData } from '../context/DataContext';
 import type { Expense } from '../types';
 import { useState } from 'react';
 import AddAccountForm from './AddAccountForm';
+import { DEFAULT_CATEGORIES } from '../constants';
 
 const AddExpenseForm = () => {
     const { isOpen, onOpen, onClose } = useDisclosure();
@@ -31,7 +32,7 @@ const AddExpenseForm = () => {
     const toast = useToast();
     const [transactionType, setTransactionType] = useState<'DEBIT' | 'CREDIT' | 'TRANSFER'>('DEBIT');
 
-    const { register, handleSubmit, reset, watch } = useForm<Expense>({
+    const { register, handleSubmit, reset, watch } = useForm<Expense & { customCategory?: string }>({
         defaultValues: {
             date: new Date().toISOString().split('T')[0],
             type: 'DEBIT'
@@ -51,6 +52,9 @@ const AddExpenseForm = () => {
                 ? `Payment to ${accounts.find(a => a.id === data.toAccountId)?.name}`
                 : data.description || 'Transfer'
         };
+        if (data.category === 'Other' && data.customCategory) {
+            newExpense.category = data.customCategory;
+        }
         if (transactionType === 'TRANSFER') newExpense.category = 'Transfer';
         addExpense(newExpense);
         toast({
@@ -206,19 +210,10 @@ const AddExpenseForm = () => {
                                     <FormControl isRequired>
                                         <FormLabel fontSize="sm">Category</FormLabel>
                                         <Select borderRadius="md" {...register('category', { required: true })}>
-                                            <option value="Bills">Bills</option>
-                                            <option value="Food">Food</option>
-                                            <option value="Groceries">Groceries</option>
-                                            <option value="Entertainment">Entertainment</option>
-                                            <option value="Transport">Transport</option>
-                                            <option value="Loan">Loan</option>
-                                            <option value="Vehical Service">Vehical Service</option>
-                                            <option value="Petrol">Petrol</option>
-                                            <option value="Shopping">Shopping</option>
-                                            <option value="Other">Other</option>
+                                            {DEFAULT_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
                                         </Select>
                                     </FormControl>
-                                    <FormControl isRequired>
+                                     <FormControl isRequired>
                                         <FormLabel fontSize="sm">Description</FormLabel>
                                         <Input
                                             placeholder="e.g. Grocery Run"
@@ -226,6 +221,16 @@ const AddExpenseForm = () => {
                                             {...register('description', { required: true })}
                                         />
                                     </FormControl>
+                                    {watch('category') === 'Other' && (
+                                        <FormControl isRequired>
+                                            <FormLabel fontSize="sm">Please specify Category</FormLabel>
+                                            <Input
+                                                placeholder="e.g. Health"
+                                                borderRadius="md"
+                                                {...register('customCategory', { required: true })}
+                                            />
+                                        </FormControl>
+                                    )}
                                 </>
                             ) : transactionType === 'CREDIT' ? (
                                 <VStack width="full" spacing={4}>

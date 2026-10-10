@@ -14,8 +14,8 @@
     "deploy": "gh-pages -d dist",
     "preview": "vite preview",
     "electron:dev": "concurrently -k \"cross-env BROWSER=none npm run dev\" \"wait-on http://localhost:5173 && electron -r ts-node/register electron/main.ts\"",
-    "electron:build": "vite build && tsc -p tsconfig.electron.json && electron-builder"
-
+    "electron:build": "vite build && tsc -p tsconfig.electron.json && electron-builder",
+    "postinstall": "electron-builder install-app-deps"
   },
   "build": {
     "appId": "com.bhuvan.app",

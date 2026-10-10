@@ -44,6 +44,7 @@ import { useState, useMemo } from 'react';
 import { format, isToday, isSameWeek, isSameMonth, parseISO } from 'date-fns';
 import { v4 as uuidv4 } from 'uuid';
 import type { Expense } from '../types';
+import { DEFAULT_CATEGORIES } from '../constants';
 
 export default function DailyExpenses() {
     const { expenses, accounts, addExpense, updateExpense, deleteExpense } = useData();
@@ -121,10 +122,6 @@ export default function DailyExpenses() {
         return Array.from(new Set(expenses.map(e => e.category))).filter(Boolean);
     }, [expenses]);
 
-    const defaultCategories = [
-        "Food & Dining", "Groceries", "Transportation", "Shopping", "Bills & Utilities", 
-        "Entertainment", "Health", "Education", "Travel", "Rent / Housing", "Personal", "Subscriptions", "Other"
-    ];
 
     const bankAccounts = accounts.filter(a => a.type === 'BANK' || !a.type);
     const creditCards = accounts.filter(a => a.type === 'CREDIT_CARD');
@@ -132,7 +129,7 @@ export default function DailyExpenses() {
     const handleAddClick = () => {
         setEditingExpense(null);
         setFormDate(format(new Date(), 'yyyy-MM-dd'));
-        setFormCategory(defaultCategories[0]);
+        setFormCategory(DEFAULT_CATEGORIES[0]);
         setFormAmount('');
         setFormAccountId('');
         setFormDescription('');
@@ -364,8 +361,8 @@ export default function DailyExpenses() {
                                     <FormLabel>{formType === 'DEBIT' ? 'Category' : 'Income Source'}</FormLabel>
                                     <Select value={formCategory} onChange={e => setFormCategory(e.target.value)}>
                                         <option value="">Select Category</option>
-                                        {defaultCategories.map(c => <option key={c} value={c}>{c}</option>)}
-                                        {!defaultCategories.includes(formCategory) && formCategory && (
+                                        {DEFAULT_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                                        {!DEFAULT_CATEGORIES.includes(formCategory) && formCategory && (
                                             <option value={formCategory}>{formCategory}</option>
                                         )}
                                     </Select>

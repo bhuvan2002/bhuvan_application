@@ -21,6 +21,8 @@ import {
 } from '@chakra-ui/react';
 import { AddIcon, DeleteIcon } from '@chakra-ui/icons';
 import { useData } from '../context/DataContext';
+import { DEFAULT_CATEGORIES } from '../constants';
+
 
 export default function BulkExpenseForm() {
     const { isOpen, onOpen, onClose } = useDisclosure();
@@ -147,16 +149,7 @@ export default function BulkExpenseForm() {
                                         <Box flex={1.5}>
                                             <Text fontSize="sm" mb={1} fontWeight="bold">Category</Text>
                                             <Select placeholder="Select category" value={row.category} onChange={(e) => handleChange(index, 'category', e.target.value)}>
-                                                <option value="Bills">Bills</option>
-                                                <option value="Food">Food</option>
-                                                <option value="Groceries">Groceries</option>
-                                                <option value="Entertainment">Entertainment</option>
-                                                <option value="Transport">Transport</option>
-                                                <option value="Loan">Loan</option>
-                                                <option value="Vehical Service">Vehical Service</option>
-                                                <option value="Petrol">Petrol</option>
-                                                <option value="Shopping">Shopping</option>
-                                                <option value="Other">Other</option>
+                                                {DEFAULT_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
                                             </Select>
                                         </Box>
 
