@@ -142,11 +142,10 @@ const Dashboard = () => {
 
         accounts.filter(a => a.type === 'CREDIT_CARD').forEach(acc => {
             const details = getCreditCardCycleDetails(acc, expenses);
-            if (details) {
-                // Modified to reflect the updated logic: CC usage is based on the manually tracked account balance
-                totalCurrentSpent += acc.balance; 
-                totalOutstanding += details.outstandingStatementAmount;
-            }
+            const spent = acc.currentSpent !== undefined ? acc.currentSpent : (details?.currentCycleSpent ?? 0);
+            const due = acc.amountDue !== undefined ? acc.amountDue : (details?.outstandingStatementAmount ?? 0);
+            totalCurrentSpent += spent; 
+            totalOutstanding += due;
         });
 
         return {

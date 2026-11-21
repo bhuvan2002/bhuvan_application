@@ -21,6 +21,16 @@ export interface Account {
     loanEndDate?: string | null;
     emiAmount?: number;
     createdAt?: string;
+
+    // Credit Card Dynamic Server Calculations
+    currentSpent?: number;
+    prevStatement?: number;
+    amountDue?: number;
+    currentCycleStart?: string;
+    currentCycleEnd?: string;
+    prevCycleStart?: string;
+    prevCycleEnd?: string;
+    currentCyclePayments?: number;
 }
 
 export interface Expense {

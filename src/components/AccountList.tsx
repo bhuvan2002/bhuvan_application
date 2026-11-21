@@ -34,6 +34,8 @@ import {
     InputLeftElement,
     Input,
     Select,
+    Progress,
+    Flex,
 } from '@chakra-ui/react';
 import { DeleteIcon, InfoIcon, EditIcon, ViewIcon, SearchIcon } from '@chakra-ui/icons';
 import { useData } from '../context/DataContext';
@@ -44,7 +46,7 @@ import PayCCBillForm from './PayCCBillForm';
 import { useState, useMemo } from 'react';
 import type { Account } from '../types';
 import { format, parseISO } from 'date-fns';
-import { getLoanDetails } from '../utils/loanUtils';
+import { getLoanDetails, getThisMonthEMIPaid } from '../utils/loanUtils';
 import { getCreditCardCycleDetails, getExpenseCycleLabel } from '../utils/creditCardUtils';
 
 const AccountList = ({ type }: { type?: 'BANK' | 'CREDIT_CARD' | 'LOAN' }) => {
@@ -193,31 +195,36 @@ const AccountList = ({ type }: { type?: 'BANK' | 'CREDIT_CARD' | 'LOAN' }) => {
                                         <Box mt={2} p={2} bg="gray.50" _dark={{ bg: 'gray.700' }} borderRadius="md" borderWidth="1px">
                                             {(() => {
                                                 const ccDetails = getCreditCardCycleDetails(account, expenses);
-                                                if (!ccDetails) return null;
+                                                const currentSpent = account.currentSpent !== undefined ? account.currentSpent : (ccDetails?.currentCycleSpent ?? 0);
+                                                const prevStatement = account.prevStatement !== undefined ? account.prevStatement : (ccDetails?.previousStatementAmount ?? 0);
+                                                const amountDue = account.amountDue !== undefined ? account.amountDue : (ccDetails?.outstandingStatementAmount ?? 0);
+                                                const cycleStart = account.currentCycleStart ? parseISO(account.currentCycleStart) : ccDetails?.currentCycleStart;
+                                                const cycleEnd = account.currentCycleEnd ? parseISO(account.currentCycleEnd) : ccDetails?.currentCycleEnd;
+
                                                 return (
                                                     <>
                                                         <HStack justify="space-between" mb={1}>
                                                             <Text fontSize="xs" color="gray.500">Billing Cycle:</Text>
                                                             <Text fontSize="xs" fontWeight="bold">
-                                                                {format(ccDetails.currentCycleStart, 'dd MMM')} → {format(ccDetails.currentCycleEnd, 'dd MMM')}
+                                                                {cycleStart && cycleEnd ? `${format(cycleStart, 'dd MMM')} → ${format(cycleEnd, 'dd MMM')}` : 'N/A'}
                                                             </Text>
                                                         </HStack>
                                                         <HStack justify="space-between" mb={1}>
                                                             <Text fontSize="xs" color="gray.500">Current Spent:</Text>
                                                             <Text fontSize="xs" fontWeight="bold">
-                                                                ₹{account.balance.toLocaleString()}
+                                                                ₹{currentSpent.toLocaleString()}
                                                             </Text>
                                                         </HStack>
                                                         <HStack justify="space-between" mb={1}>
                                                             <Text fontSize="xs" color="gray.500">Prev Statement:</Text>
                                                             <Text fontSize="xs" fontWeight="bold" color="red.500">
-                                                                ₹{ccDetails.previousStatementAmount.toLocaleString()}
+                                                                ₹{prevStatement.toLocaleString()}
                                                             </Text>
                                                         </HStack>
                                                         <HStack justify="space-between" mb={1}>
                                                             <Text fontSize="xs" color="gray.500">Amount Due:</Text>
                                                             <Text fontSize="sm" fontWeight="bold" color="red.500">
-                                                                ₹{ccDetails.outstandingStatementAmount.toLocaleString()}
+                                                                ₹{amountDue.toLocaleString()}
                                                             </Text>
                                                         </HStack>
                                                         <HStack justify="space-between">
@@ -292,6 +299,85 @@ const AccountList = ({ type }: { type?: 'BANK' | 'CREDIT_CARD' | 'LOAN' }) => {
             {(!type || type === 'CREDIT_CARD') && renderAccountCards(creditCards, 'Credit Cards', 'orange')}
             {(!type || type === 'LOAN') && (
                 <>
+                    {/* ── Monthly EMI Summary Banner ── */}
+                    {activeLoans.length > 0 && (() => {
+                        const now = new Date();
+                        const monthName = now.toLocaleString('default', { month: 'long', year: 'numeric' });
+
+                        // Per-loan this-month stats
+                        const loanStats = activeLoans.map(loan => {
+                            const emi = loan.emiAmount || 0;
+                            const paidThisMonth = getThisMonthEMIPaid(loan, expenses);
+                            const isPaid = paidThisMonth >= emi;
+                            const remaining = isPaid ? 0 : emi - paidThisMonth;
+                            return { loan, emi, paidThisMonth, isPaid, remaining };
+                        });
+
+                        const totalEMIThisMonth = loanStats.reduce((s, x) => s + x.emi, 0);
+                        const totalPaidThisMonth = loanStats.reduce((s, x) => s + x.paidThisMonth, 0);
+                        const totalRemainingThisMonth = loanStats.reduce((s, x) => s + x.remaining, 0);
+                        const allPaid = totalRemainingThisMonth === 0;
+                        const paidPct = totalEMIThisMonth > 0 ? Math.round((totalPaidThisMonth / totalEMIThisMonth) * 100) : 0;
+
+                        return (
+                            <Card mb={6} borderTop="4px solid" borderColor={allPaid ? 'green.400' : 'purple.400'}>
+                                <CardBody>
+                                    <Flex justify="space-between" align="center" mb={4} flexWrap="wrap" gap={2}>
+                                        <Box>
+                                            <Heading size="sm" color="gray.600">EMI Summary — {monthName}</Heading>
+                                            <Text fontSize="xs" color="gray.400" mt={0.5}>{activeLoans.length} active loan(s)</Text>
+                                        </Box>
+                                        <Badge
+                                            colorScheme={allPaid ? 'green' : 'orange'}
+                                            fontSize="sm"
+                                            px={3}
+                                            py={1}
+                                            borderRadius="full"
+                                        >
+                                            {allPaid ? '✓ All EMIs Paid This Month' : `₹${totalRemainingThisMonth.toLocaleString()} Still Due`}
+                                        </Badge>
+                                    </Flex>
+
+                                    {/* Overall progress */}
+                                    <Box mb={4}>
+                                        <HStack justify="space-between" mb={1}>
+                                            <Text fontSize="xs" color="gray.500">Overall Progress</Text>
+                                            <Text fontSize="xs" fontWeight="bold" color={allPaid ? 'green.500' : 'purple.500'}>{paidPct}%</Text>
+                                        </HStack>
+                                        <Progress
+                                            value={paidPct}
+                                            colorScheme={allPaid ? 'green' : 'purple'}
+                                            borderRadius="full"
+                                            size="sm"
+                                        />
+                                    </Box>
+
+                                    {/* Top totals row */}
+                                    <SimpleGrid columns={{ base: 2, md: 3 }} spacing={4} mb={5}>
+                                        <Stat>
+                                            <StatLabel fontSize="xs" color="gray.500" textTransform="uppercase">Total EMI This Month</StatLabel>
+                                            <StatNumber fontSize="xl" color="purple.600">₹{totalEMIThisMonth.toLocaleString()}</StatNumber>
+                                        </Stat>
+                                        <Stat>
+                                            <StatLabel fontSize="xs" color="gray.500" textTransform="uppercase">Paid This Month</StatLabel>
+                                            <StatNumber fontSize="xl" color="green.500">₹{totalPaidThisMonth.toLocaleString()}</StatNumber>
+                                        </Stat>
+                                        <Stat>
+                                            <StatLabel fontSize="xs" color="gray.500" textTransform="uppercase">
+                                                {allPaid ? 'Next Month Due' : 'Still Due This Month'}
+                                            </StatLabel>
+                                            <StatNumber fontSize="xl" color={allPaid ? 'blue.500' : 'red.500'}>
+                                                ₹{allPaid ? totalEMIThisMonth.toLocaleString() : totalRemainingThisMonth.toLocaleString()}
+                                            </StatNumber>
+                                        </Stat>
+                                    </SimpleGrid>
+
+
+                                </CardBody>
+                            </Card>
+                        );
+                    })()}
+
                     {renderAccountCards(activeLoans, 'Active Loans', 'purple')}
                     {renderAccountCards(clearedLoans, 'Cleared / History Loans', 'gray')}
                 </>

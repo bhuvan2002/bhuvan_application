@@ -32,8 +32,8 @@ export default function PayCCBillForm({ account }: { account: Account }) {
     const { accounts, expenses, addExpense } = useData();
     const toast = useToast();
     const ccDetails = getCreditCardCycleDetails(account, expenses);
-    if (!ccDetails) return null;
-    const amountDue = ccDetails.outstandingStatementAmount;
+    const amountDue = account.amountDue !== undefined ? account.amountDue : (ccDetails?.outstandingStatementAmount ?? 0);
+    const prevStatement = account.prevStatement !== undefined ? account.prevStatement : (ccDetails?.previousStatementAmount ?? 0);
     
     const [selectedBankId, setSelectedBankId] = useState('');
     const [payAmount, setPayAmount] = useState<number | ''>(amountDue > 0 ? amountDue : account.balance);
@@ -77,7 +77,7 @@ export default function PayCCBillForm({ account }: { account: Account }) {
         }
     };
 
-    if (account.balance <= 0 && amountDue === 0 && ccDetails.previousStatementAmount > 0) {
+    if (account.balance <= 0 && amountDue === 0 && prevStatement > 0) {
         return (
             <VStack align="start" spacing={1} mt={4} p={3} bg="green.50" _dark={{ bg: 'green.900' }} borderRadius="md" borderWidth="1px" borderColor="green.200">
                 <HStack>

@@ -1,5 +1,22 @@
-import { differenceInMonths, parseISO } from 'date-fns';
+import { differenceInMonths, parseISO, isSameMonth } from 'date-fns';
 import type { Account, Expense } from '../types';
+
+/**
+ * Returns how much EMI was paid this month for a given loan account.
+ */
+export const getThisMonthEMIPaid = (loan: Account, expenses: Expense[]): number => {
+    const now = new Date();
+    let paid = 0;
+    expenses.forEach(e => {
+        const isEmiPayment =
+            (e.toAccountId === loan.id && e.type === 'TRANSFER') ||
+            (e.accountId === loan.id && e.type === 'CREDIT');
+        if (isEmiPayment && isSameMonth(parseISO(e.date), now)) {
+            paid += Number(e.amount);
+        }
+    });
+    return paid;
+};
 
 export const getLoanDetails = (loan: Account, expenses: Expense[]) => {
     const emi = loan.emiAmount || 0;

@@ -61,19 +61,19 @@ export function getCreditCardCycleDetails(
         const isPaid = (e.accountId === account.id && e.type === 'CREDIT') || 
                        (e.toAccountId === account.id && e.type === 'TRANSFER');
 
-        // Belonging to previous cycle?
+        // Belonging to previous cycle? (This generated the previous statement)
         if ((isEqual(d, previousCycleStart) || isAfter(d, previousCycleStart)) && isBefore(d, previousCycleEnd)) {
             if (isSpent) previousStatementAmount += amount;
-            // (If they pay during the previous cycle itself, it reduces the amount owed for that cycle)
-            if (isPaid) previousStatementAmount -= amount; 
+            if (e.accountId === account.id && e.type === 'CREDIT') previousStatementAmount -= amount; 
         }
         
         // Belonging to current cycle?
         if ((isEqual(d, currentCycleStart) || isAfter(d, currentCycleStart)) && isBefore(d, currentCycleEnd)) {
             if (isSpent) currentCycleSpent += amount;
+            if (e.accountId === account.id && e.type === 'CREDIT') currentCycleSpent -= amount;
             if (isPaid) {
                 currentCyclePaid += amount;
-                previousStatementPaid += amount; // We count payments in current cycle towards paying off previous statement
+                previousStatementPaid += amount; // Payments made in current cycle pay off previous statement
             }
         }
     });

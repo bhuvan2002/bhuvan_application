@@ -49,7 +49,8 @@ import { DEFAULT_CATEGORIES } from '../constants';
 export default function DailyExpenses() {
     const { expenses, accounts, addExpense, updateExpense, deleteExpense } = useData();
     const [searchQuery, setSearchQuery] = useState('');
-    const [filterDate, setFilterDate] = useState('');
+    const [filterStartDate, setFilterStartDate] = useState('');
+    const [filterEndDate, setFilterEndDate] = useState('');
     const [filterCategory, setFilterCategory] = useState('');
     const [filterAccountId, setFilterAccountId] = useState('');
 
@@ -68,6 +69,7 @@ export default function DailyExpenses() {
 
     const borderColor = useColorModeValue('gray.200', 'gray.700');
     const hoverBg = useColorModeValue('gray.50', 'gray.700');
+    const dateRangeBg = useColorModeValue('teal.50', 'teal.900');
 
     // Totals
     const { todayTotal, weekTotal, monthTotal } = useMemo(() => {
@@ -95,8 +97,12 @@ export default function DailyExpenses() {
                 const q = searchQuery.toLowerCase();
                 match = match && Boolean((e.description && e.description.toLowerCase().includes(q)) || (e.category && e.category.toLowerCase().includes(q)));
             }
-            if (filterDate) {
-                match = match && format(parseISO(e.date), 'yyyy-MM-dd') === filterDate;
+            const expenseDate = format(parseISO(e.date), 'yyyy-MM-dd');
+            if (filterStartDate) {
+                match = match && expenseDate >= filterStartDate;
+            }
+            if (filterEndDate) {
+                match = match && expenseDate <= filterEndDate;
             }
             if (filterCategory) {
                 match = match && e.category === filterCategory;
@@ -106,7 +112,22 @@ export default function DailyExpenses() {
             }
             return match;
         }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-    }, [expenses, searchQuery, filterDate, filterCategory, filterAccountId]);
+    }, [expenses, searchQuery, filterStartDate, filterEndDate, filterCategory, filterAccountId]);
+
+    // Date range total
+    const dateRangeTotal = useMemo(() => {
+        if (!filterStartDate && !filterEndDate) return null;
+        let spent = 0, earned = 0;
+        filteredExpenses.forEach(e => {
+            const isLiabilityPayment = e.type === 'TRANSFER' && (e.category === 'CC Bill Payment' || e.category === 'EMI Payment');
+            if (e.type === 'CREDIT') {
+                earned += Number(e.amount);
+            } else if (e.type === 'DEBIT' || !e.type || isLiabilityPayment) {
+                spent += Number(e.amount);
+            }
+        });
+        return { spent, earned, net: earned - spent };
+    }, [filteredExpenses, filterStartDate, filterEndDate]);
 
     const groupedByDate = useMemo(() => {
         const groups: Record<string, Expense[]> = {};
@@ -244,27 +265,98 @@ export default function DailyExpenses() {
                 </Card>
             </SimpleGrid>
 
+            {/* Date Range Total Card — shown only when a date range is active */}
+            {dateRangeTotal && (
+                <Card mb={6} borderTop="4px solid" borderColor="teal.400" bg={dateRangeBg}>
+                    <CardBody>
+                        <Flex align="center" justify="space-between" flexWrap="wrap" gap={4}>
+                            <Box>
+                                <Text fontSize="sm" color="gray.500" textTransform="uppercase" fontWeight="bold" mb={1}>
+                                    Date Range Summary
+                                    {filterStartDate && filterEndDate
+                                        ? ` · ${filterStartDate} → ${filterEndDate}`
+                                        : filterStartDate
+                                        ? ` · From ${filterStartDate}`
+                                        : ` · Until ${filterEndDate}`}
+                                </Text>
+                                <Text fontSize="sm" color="gray.400">{filteredExpenses.length} transaction(s)</Text>
+                            </Box>
+                            <HStack spacing={8}>
+                                <Stat textAlign="center">
+                                    <StatLabel fontSize="xs" color="red.400" textTransform="uppercase">Spent</StatLabel>
+                                    <StatNumber fontSize="2xl" color="red.500">₹{dateRangeTotal.spent.toLocaleString()}</StatNumber>
+                                </Stat>
+                                <Stat textAlign="center">
+                                    <StatLabel fontSize="xs" color="green.400" textTransform="uppercase">Earned</StatLabel>
+                                    <StatNumber fontSize="2xl" color="green.500">₹{dateRangeTotal.earned.toLocaleString()}</StatNumber>
+                                </Stat>
+                                <Stat textAlign="center">
+                                    <StatLabel fontSize="xs" color={dateRangeTotal.net >= 0 ? 'green.400' : 'red.400'} textTransform="uppercase">Net</StatLabel>
+                                    <StatNumber fontSize="2xl" color={dateRangeTotal.net >= 0 ? 'green.500' : 'red.500'}>
+                                        {dateRangeTotal.net >= 0 ? '+' : ''}₹{dateRangeTotal.net.toLocaleString()}
+                                    </StatNumber>
+                                </Stat>
+                            </HStack>
+                        </Flex>
+                    </CardBody>
+                </Card>
+            )}
+
             {/* Filters */}
             <Card mb={8}>
                 <CardBody>
-                    <SimpleGrid columns={{ base: 1, md: 4 }} spacing={4}>
-                        <InputGroup>
-                            <InputLeftElement pointerEvents="none"><SearchIcon color="gray.400" /></InputLeftElement>
-                            <Input placeholder="Search expenses..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
-                        </InputGroup>
-                        <Input type="date" value={filterDate} onChange={e => setFilterDate(e.target.value)} />
-                        <Select placeholder="All Categories" value={filterCategory} onChange={e => setFilterCategory(e.target.value)}>
-                            {categories.map(c => <option key={c} value={c}>{c}</option>)}
-                        </Select>
-                        <Select placeholder="All Payment Accounts" value={filterAccountId} onChange={e => setFilterAccountId(e.target.value)}>
-                            <optgroup label="Bank Accounts">
-                                {bankAccounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
-                            </optgroup>
-                            <optgroup label="Credit Cards">
-                                {creditCards.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
-                            </optgroup>
-                        </Select>
+                    <SimpleGrid columns={{ base: 1, sm: 2, md: 3, lg: 5 }} spacing={4} alignItems="flex-end">
+                        <FormControl>
+                            <FormLabel fontSize="xs" color="gray.500" fontWeight="semibold" mb={1}>Search</FormLabel>
+                            <InputGroup>
+                                <InputLeftElement pointerEvents="none"><SearchIcon color="gray.400" /></InputLeftElement>
+                                <Input placeholder="Description / Category" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
+                            </InputGroup>
+                        </FormControl>
+                        <FormControl>
+                            <FormLabel fontSize="xs" color="gray.500" fontWeight="semibold" mb={1}>From Date</FormLabel>
+                            <Input type="date" value={filterStartDate} onChange={e => setFilterStartDate(e.target.value)} max={filterEndDate || undefined} />
+                        </FormControl>
+                        <FormControl>
+                            <FormLabel fontSize="xs" color="gray.500" fontWeight="semibold" mb={1}>To Date</FormLabel>
+                            <Input type="date" value={filterEndDate} onChange={e => setFilterEndDate(e.target.value)} min={filterStartDate || undefined} />
+                        </FormControl>
+                        <FormControl>
+                            <FormLabel fontSize="xs" color="gray.500" fontWeight="semibold" mb={1}>Category</FormLabel>
+                            <Select placeholder="All Categories" value={filterCategory} onChange={e => setFilterCategory(e.target.value)}>
+                                {categories.map(c => <option key={c} value={c}>{c}</option>)}
+                            </Select>
+                        </FormControl>
+                        <FormControl>
+                            <FormLabel fontSize="xs" color="gray.500" fontWeight="semibold" mb={1}>Account</FormLabel>
+                            <Select placeholder="All Accounts" value={filterAccountId} onChange={e => setFilterAccountId(e.target.value)}>
+                                <optgroup label="Bank Accounts">
+                                    {bankAccounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+                                </optgroup>
+                                <optgroup label="Credit Cards">
+                                    {creditCards.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+                                </optgroup>
+                            </Select>
+                        </FormControl>
                     </SimpleGrid>
+                    {(filterStartDate || filterEndDate || filterCategory || filterAccountId || searchQuery) && (
+                        <Flex justify="flex-end" mt={3}>
+                            <Button
+                                variant="ghost"
+                                colorScheme="red"
+                                size="sm"
+                                onClick={() => {
+                                    setFilterStartDate('');
+                                    setFilterEndDate('');
+                                    setFilterCategory('');
+                                    setFilterAccountId('');
+                                    setSearchQuery('');
+                                }}
+                            >
+                                ✕ Clear All Filters
+                            </Button>
+                        </Flex>
+                    )}
                 </CardBody>
             </Card>
 
